@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
   ]);
   if (error) return fail("Erro ao listar filiais.", 500, error.message);
   if (employeesRes.error) return fail("Erro ao calcular funcionários por filial.", 500, employeesRes.error.message);
-  const employees = employeesRes.data || [];
+  const employees = (employeesRes.data || []) as Array<{ id: string; branch_id: string }>;
   const branches = (data || []).map((branch) => ({
     ...branch,
     employee_count: employees.filter((employee) => employee.branch_id === branch.id).length

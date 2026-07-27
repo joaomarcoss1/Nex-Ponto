@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import type { User } from "@supabase/supabase-js";
 import { fail } from "@/lib/server/http";
 import { getSupabaseAdmin, getSupabaseAuthClient } from "@/lib/server/db";
 import { createTenantScopedClient } from "@/lib/server/tenant-scoped-client";
@@ -45,22 +46,32 @@ function relationOne<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? value[0] || null : value;
 }
 
-export async function authenticatedUser(request: NextRequest) {
+type AuthenticatedUserResult =
+  | {
+      readonly ok: false;
+      readonly error: ReturnType<typeof fail>;
+    }
+  | {
+      readonly ok: true;
+      readonly token: string;
+      readonly user: User;
+    };
+export async function authenticatedUser(request: NextRequest): Promise<AuthenticatedUserResult> {
   const authHeader = request.headers.get("authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "";
-  if (!token) return { error: fail("Login administrativo obrigatório.", 401) } as const;
+  if (!token) return { ok: false, error: fail("Login administrativo obrigatório.", 401) } as const;
 
   const authClient = getSupabaseAuthClient();
   const { data: userData, error: userError } = await authClient.auth.getUser(token);
   if (userError || !userData.user?.email) {
-    return { error: fail("Sessão inválida ou expirada.", 401) } as const;
+    return { ok: false, error: fail("Sessão inválida ou expirada.", 401) } as const;
   }
-  return { token, user: userData.user } as const;
+  return { ok: true, token, user: userData.user } as const;
 }
 
 export async function requireAdmin(request: NextRequest, allowedRoles?: AdminRole[]) {
   const authResult = await authenticatedUser(request);
-  if ("error" in authResult) return authResult;
+  if (!authResult.ok) return { error: authResult.error } as const;
 
   const rawSupabase = getSupabaseAdmin();
   const { data: membershipRows, error: membershipError } = await rawSupabase
@@ -153,7 +164,7 @@ export async function requireAdmin(request: NextRequest, allowedRoles?: AdminRol
 
 export async function requirePlatformSuperadmin(request: NextRequest) {
   const authResult = await authenticatedUser(request);
-  if ("error" in authResult) return authResult;
+  if (!authResult.ok) return { error: authResult.error } as const;
   const supabase = getSupabaseAdmin();
   const { data: profile, error } = await supabase
     .from("platform_superadmins")

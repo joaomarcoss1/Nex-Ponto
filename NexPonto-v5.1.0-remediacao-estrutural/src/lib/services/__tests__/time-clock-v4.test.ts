@@ -25,7 +25,16 @@ function entry(id: string, action: TimeEntry["action"], timestamp: string, overr
     expected_end_time: "18:00",
     expected_daily_minutes: 480,
     expected_lunch_minutes: 90,
-    ...overrides
+    ...overrides,
+    occurrence_review_status: overrides.occurrence_review_status ?? "pending_review",
+    occurrence_review_observation: overrides.occurrence_review_observation ?? null,
+    occurrence_reviewed_by: overrides.occurrence_reviewed_by ?? null,
+    occurrence_reviewed_at: overrides.occurrence_reviewed_at ?? null,
+    original_entry_id: overrides.original_entry_id ?? null,
+    adjusted_by: overrides.adjusted_by ?? null,
+    adjusted_at: overrides.adjusted_at ?? null,
+    adjustment_reason: overrides.adjustment_reason ?? null,
+    created_at: overrides.created_at ?? timestamp
   };
 }
 
