@@ -1,0 +1,53 @@
+name: NexPonto CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    defaults:
+      run:
+        working-directory: NexPonto-v5.1.0-remediacao-estrutural
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: NexPonto-v5.1.0-remediacao-estrutural/pnpm-lock.yaml
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Verificar dados sensíveis
+        run: pnpm run security:data
+
+      - name: Verificar migrations
+        run: pnpm run migrations:check
+
+      - name: Verificar estrutura
+        run: pnpm run structure:check
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Testes
+        run: pnpm run test
+
+      - name: Build
+        run: pnpm run build

@@ -55,7 +55,7 @@ assert(/nexponto-v(4|5\.1)/i.test(serviceWorker), "Service worker deve usar cach
 
 const packageJson = JSON.parse(read("package.json"));
 assert(["4.0.0", "5.1.0"].includes(packageJson.version), "package.json deve declarar uma versão NexPonto homologável.");
-assert(!existsSync(resolve(process.cwd(), "pnpm-lock.yaml")), "Use apenas package-lock.json; remova pnpm-lock.yaml.");
-assert(existsSync(resolve(process.cwd(), "package-lock.json")), "package-lock.json ausente.");
+assert(existsSync(resolve(process.cwd(), "pnpm-lock.yaml")), "pnpm-lock.yaml ausente.");
+// O NexPonto utiliza pnpm-lock.yaml como lockfile oficial.
 
 console.log("Estrutura-base NexPonto verificada: tenancy, portal mobile, operações críticas e pacote limpo presentes.");
