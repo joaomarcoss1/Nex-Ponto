@@ -1,0 +1,23 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="blue" x1="92" y1="70" x2="344" y2="430" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22A5F5"/>
+      <stop offset="0.48" stop-color="#1268F3"/>
+      <stop offset="1" stop-color="#0B3EBB"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="355" y1="75" x2="406" y2="430" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD566"/>
+      <stop offset="0.5" stop-color="#F4B51C"/>
+      <stop offset="1" stop-color="#D99608"/>
+    </linearGradient>
+    <filter id="shadow" x="42" y="40" width="430" height="442" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="20" stdDeviation="18" flood-color="#061A43" flood-opacity=".24"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="132" fill="#061227"/>
+  <g filter="url(#shadow)">
+    <path d="M98 389V142C98 116 128 102 148 119L320 268V154C320 135 335 120 354 120H365V374L162 198V389H98Z" fill="url(#blue)"/>
+    <path d="M198 263L350 395H260L198 341V263Z" fill="url(#blue)"/>
+    <path d="M371 119H386C405 119 420 134 420 153V330L452 389H370L371 119Z" fill="url(#gold)"/>
+  </g>
+</svg>

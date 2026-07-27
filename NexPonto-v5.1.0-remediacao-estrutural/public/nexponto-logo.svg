@@ -1,0 +1,11 @@
+<svg width="1024" height="288" viewBox="0 0 1024 288" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="288" rx="48" fill="#061227"/>
+  <g transform="translate(36 20) scale(.48)">
+    <path d="M98 389V142C98 116 128 102 148 119L320 268V154C320 135 335 120 354 120H365V374L162 198V389H98Z" fill="#1268F3"/>
+    <path d="M198 263L350 395H260L198 341V263Z" fill="#22A5F5"/>
+    <path d="M371 119H386C405 119 420 134 420 153V330L452 389H370L371 119Z" fill="#F4B51C"/>
+  </g>
+  <text x="300" y="174" fill="white" font-family="Inter, Arial, sans-serif" font-size="108" font-weight="760" letter-spacing="-5">Nex</text>
+  <text x="487" y="174" fill="#F4B51C" font-family="Inter, Arial, sans-serif" font-size="108" font-weight="760" letter-spacing="-5">Ponto</text>
+  <text x="306" y="218" fill="#8FC8FF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="7">GESTÃO INTELIGENTE</text>
+</svg>

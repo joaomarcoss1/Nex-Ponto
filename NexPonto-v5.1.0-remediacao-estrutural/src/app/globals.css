@@ -1,0 +1,763 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-brand-50: 238 246 255;
+  --color-brand-100: 217 234 255;
+  --color-brand-200: 188 220 255;
+  --color-brand-300: 143 200 255;
+  --color-brand-400: 89 169 255;
+  --color-brand-500: 46 132 255;
+  --color-brand-600: 18 104 243;
+  --color-brand-700: 11 79 209;
+  --color-brand-800: 16 63 166;
+  --color-brand-900: 18 57 130;
+  --color-brand-950: 10 31 77;
+  --color-accent-50: 255 249 231;
+  --color-accent-100: 255 239 189;
+  --color-accent-200: 255 224 131;
+  --color-accent-300: 249 203 69;
+  --color-accent-400: 244 181 28;
+  --color-accent-500: 217 150 8;
+  --color-accent-600: 175 112 4;
+  --background: #f5f7fb;
+  --surface: #ffffff;
+  --foreground: #111827;
+  --brand: #1268f3;
+  --brand-dark: #0a1f4d;
+  --sun: #f4b51c;
+  --line: #dce4f0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  color: var(--foreground);
+  background:
+    radial-gradient(circle at 8% -5%, rgba(34, 165, 245, 0.13), transparent 32rem),
+    radial-gradient(circle at 95% 2%, rgba(244, 181, 28, 0.10), transparent 28rem),
+    linear-gradient(180deg, rgba(18, 104, 243, 0.035), rgba(255, 255, 255, 0) 340px),
+    var(--background);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.container-page {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.glass-panel {
+  border: 1px solid rgba(220, 228, 240, 0.9);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: 0 18px 60px rgba(10, 31, 77, 0.12);
+  backdrop-filter: blur(14px);
+}
+
+.focus-ring {
+  outline: 3px solid rgba(34, 165, 245, 0.42);
+  outline-offset: 2px;
+}
+
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior-y: contain;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes soft-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.03); opacity: 0.92; }
+}
+
+.animate-fade-in {
+  animation: fade-in-up 0.36s ease both;
+}
+
+.animate-soft-pulse {
+  animation: soft-pulse 1.8s ease-in-out infinite;
+}
+
+/* Comercial polish: reusable surface, table and feedback improvements */
+@keyframes shine-sweep {
+  from { transform: translateX(-120%); opacity: 0; }
+  35% { opacity: 0.22; }
+  to { transform: translateX(160%); opacity: 0; }
+}
+
+.premium-surface {
+  position: relative;
+  overflow: hidden;
+}
+
+.premium-surface::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.45) 42%, transparent 62%);
+  transform: translateX(-120%);
+}
+
+.premium-surface:hover::after {
+  animation: shine-sweep 1.2s ease;
+}
+
+.table-premium th {
+  background: var(--brand);
+  color: white;
+  font-weight: 900;
+}
+
+.table-premium tbody tr:nth-child(even) {
+  background: rgba(238, 246, 255, 0.52);
+}
+
+.table-premium tbody tr:hover {
+  background: rgba(255, 193, 7, 0.12);
+}
+
+/* Ajustes comerciais de legibilidade e alinhamento: evita texto torto, botões sobrepostos e colunas estouradas. */
+html {
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+main,
+section,
+div,
+form,
+article,
+header,
+footer,
+nav {
+  min-width: 0;
+}
+
+.btn-safe {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+@media (min-width: 640px) {
+  .btn-safe {
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+}
+
+table {
+  border-collapse: collapse;
+}
+
+th,
+td {
+  vertical-align: top;
+}
+
+th {
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+
+td {
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.admin-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-table-shell {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 1rem;
+  border: 1px solid rgb(226 232 240);
+}
+
+.admin-table-shell table {
+  width: 100%;
+}
+
+.text-safe {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+@media (max-width: 640px) {
+  .mobile-stack-actions {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .mobile-stack-actions > * {
+    width: 100%;
+  }
+}
+
+/* Revisão visual final: estabilidade de layout profissional em telas pequenas e grandes. */
+:where(.rounded-3xl, .rounded-2xl, .rounded-xl) {
+  overflow-wrap: anywhere;
+}
+
+.btn-safe {
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  line-height: 1.15;
+  text-align: center;
+}
+
+@media (max-width: 639px) {
+  .btn-safe {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+@media (min-width: 640px) {
+  .btn-safe {
+    width: auto;
+  }
+}
+
+.admin-table-shell,
+.overflow-x-auto {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(18, 104, 243, 0.45) rgba(226, 232, 240, 0.8);
+}
+
+.admin-table-shell table,
+.overflow-x-auto table {
+  min-width: 860px;
+}
+
+.badge-safe,
+[class*="rounded-full"] {
+  max-width: 100%;
+}
+
+select,
+input,
+textarea {
+  min-width: 0;
+  width: 100%;
+}
+
+.card-title-safe,
+h1,
+h2,
+h3,
+p,
+span,
+strong {
+  min-width: 0;
+}
+
+/* Evita que cabeçalhos com filtros e botões fiquem tortos/sobrepostos no mobile. */
+@media (max-width: 767px) {
+  .admin-action-row,
+  .toolbar,
+  .filter-toolbar {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .admin-action-row > *,
+  .toolbar > *,
+  .filter-toolbar > * {
+    width: 100%;
+  }
+}
+
+/* Aparência corporativa mais limpa para blocos administrativos. */
+.admin-page-card {
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98));
+  box-shadow: 0 16px 44px rgba(15,23,42,0.06);
+}
+
+/* Tabelas com melhor legibilidade para relatórios e folha. */
+.table-premium th,
+.table-premium td {
+  padding: 0.85rem 0.9rem;
+}
+
+.table-premium td {
+  font-size: 0.875rem;
+  color: rgb(51 65 85);
+}
+
+
+/* Hardening final de layout para produção */
+.page-header,
+.admin-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+@media (max-width: 767px) {
+  .page-header,
+  .admin-page-header {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+.btn-safe,
+button,
+[role="button"] {
+  gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .btn-safe,
+  button,
+  [role="button"] {
+    white-space: nowrap;
+  }
+}
+
+.table-card-mobile {
+  display: block;
+}
+
+@media (max-width: 767px) {
+  .admin-table-shell table {
+    min-width: 760px;
+  }
+  .admin-action-row button,
+  .admin-action-row a {
+    min-height: 42px;
+  }
+}
+
+@media (min-width: 768px) {
+  .admin-action-row button,
+  .admin-action-row a {
+    flex: 0 0 auto;
+  }
+}
+
+.truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Rodada final 10/10: grids seguros, cards elásticos e telas sem sobreposição. */
+.responsive-grid,
+.professional-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+
+.action-bar,
+.filter-bar,
+.admin-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.action-bar > *,
+.filter-bar > *,
+.admin-action-row > * {
+  min-width: 0;
+}
+
+.text-safe {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.table-safe {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.table-safe th,
+.table-safe td {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 767px) {
+  .mobile-stack-actions,
+  .action-bar,
+  .filter-bar {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .mobile-stack-actions > *,
+  .action-bar > *,
+  .filter-bar > * {
+    width: 100%;
+  }
+
+  main {
+    overflow-x: hidden;
+  }
+}
+
+/* Mobile Premium & Performance — experiência de app real no celular. */
+@media (max-width: 767px) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    background: #F5F7FB;
+  }
+
+  .admin-table-shell {
+    border: 0;
+    overflow: visible;
+  }
+
+  .admin-table-shell table {
+    min-width: 720px;
+  }
+
+  .btn-safe {
+    border-radius: 1rem;
+  }
+
+  input,
+  select,
+  textarea {
+    min-height: 48px;
+    font-size: 16px;
+  }
+}
+
+.premium-stepper {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.premium-step {
+  display: inline-flex;
+  min-width: max-content;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(203, 213, 225, 0.85);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.45rem 0.7rem;
+  color: #64748B;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.premium-step span {
+  display: grid;
+  height: 1.35rem;
+  width: 1.35rem;
+  place-items: center;
+  border-radius: 999px;
+  background: #D9EAFF;
+  color: #1268F3;
+  font-size: 0.7rem;
+}
+
+.premium-step-active {
+  border-color: rgba(18, 104, 243, 0.25);
+  background: linear-gradient(135deg, #EEF6FF, #fff8df);
+  color: #0A1F4D;
+}
+
+.premium-step-active span {
+  background: #1268F3;
+  color: white;
+}
+
+@media (max-width: 767px) {
+  .premium-stepper {
+    margin-right: -1rem;
+    padding-right: 1rem;
+    scrollbar-width: none;
+  }
+
+  .premium-stepper::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Acabamento final da folha: visual administrativo corporativo e mobile mais limpo. */
+.payroll-hero {
+  position: relative;
+  isolation: isolate;
+}
+
+.payroll-hero::before {
+  content: "";
+  position: absolute;
+  inset: -45% -10% auto auto;
+  width: 26rem;
+  height: 26rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(244, 197, 66, 0.28), rgba(244, 197, 66, 0));
+  z-index: -1;
+}
+
+.payroll-hero::after {
+  content: "";
+  position: absolute;
+  right: -5rem;
+  bottom: -8rem;
+  width: 21rem;
+  height: 21rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  z-index: -1;
+}
+
+.payroll-workspace .admin-table-shell {
+  border-color: rgba(18, 104, 243, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 18px 55px rgba(10, 31, 77, 0.06);
+}
+
+.payroll-workspace th,
+.payroll-workspace td {
+  white-space: nowrap;
+}
+
+.payroll-workspace tbody td:first-child {
+  white-space: normal;
+  min-width: 13rem;
+}
+
+.payroll-mobile-card {
+  transform: translateZ(0);
+}
+
+@media (max-width: 767px) {
+  .payroll-hero {
+    margin-left: -0.25rem;
+    margin-right: -0.25rem;
+  }
+
+  .payroll-hero h1 {
+    font-size: 1.75rem;
+  }
+
+  .payroll-workspace {
+    padding: 1rem !important;
+  }
+}
+
+/* Fluidez premium: troca de funções sem sensação de reload pesado */
+.route-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  height: 3px;
+  width: 100%;
+  transform-origin: left;
+  background: linear-gradient(90deg, #0A1F4D, #1268F3, #F4B51C);
+  animation: route-progress 0.9s ease-in-out infinite;
+  box-shadow: 0 8px 28px rgba(18, 104, 243, 0.35);
+}
+
+@keyframes route-progress {
+  0% { transform: scaleX(0.18); opacity: 0.72; }
+  55% { transform: scaleX(0.72); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0.22; }
+}
+
+.admin-page-enter,
+.premium-surface,
+.payroll-hero,
+.payroll-page-shell,
+.payroll-mobile-card {
+  animation: premium-fade-up 0.32s ease-out both;
+}
+
+@keyframes premium-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.skeleton-soft {
+  background: linear-gradient(90deg, #EEF6FF 0%, #ffffff 42%, #EEF6FF 80%);
+  background-size: 260% 100%;
+  animation: skeleton-soft 1.15s ease-in-out infinite;
+}
+
+@keyframes skeleton-soft {
+  0% { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+
+.payroll-page-shell {
+  border: 1px solid rgba(18, 104, 243, 0.14);
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,250,247,0.94));
+  box-shadow: 0 24px 80px rgba(10, 31, 77, 0.08);
+}
+
+.payroll-table-premium th,
+.payroll-table-premium td {
+  vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+  .payroll-hero {
+    border-radius: 1.4rem !important;
+  }
+
+  .payroll-page-shell {
+    border-radius: 1.35rem;
+  }
+
+  .admin-action-row {
+    width: 100%;
+  }
+
+  .admin-action-row > * {
+    flex: 1 1 100%;
+  }
+}
+
+/* Correção final da folha: paleta institucional limpa e legível. */
+.payroll-header-clean {
+  color: #1f2d26;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(247, 250, 247, 0.96) 48%, rgba(255, 248, 223, 0.72));
+}
+
+.payroll-header-clean::before,
+.payroll-header-clean::after {
+  display: none !important;
+}
+
+.payroll-status-clean strong,
+.payroll-status-clean p,
+.payroll-status-clean span {
+  opacity: 1 !important;
+}
+
+.payroll-workspace {
+  background: #ffffff !important;
+}
+
+.payroll-workspace .admin-table-shell {
+  background: #ffffff;
+}
+
+.payroll-workspace thead tr {
+  background: #0A1F4D !important;
+}
+
+.payroll-workspace tbody tr:nth-child(even) {
+  background: rgba(238, 246, 255, 0.92) !important;
+}
+
+.payroll-workspace tbody tr:hover {
+  background: rgba(244, 197, 66, 0.14) !important;
+}
+
+/* Polimento final da folha no app: contraste real e alinhamento consistente. */
+.payroll-header-clean {
+  background: #ffffff !important;
+  border-color: rgba(18, 104, 243, 0.18) !important;
+  box-shadow: 0 18px 60px rgba(10, 31, 77, 0.08) !important;
+}
+.payroll-header-clean .text-white { color: #ffffff !important; }
+.payroll-header-clean .text-brand-950,
+.payroll-header-clean h1 { color: #0A1F4D !important; }
+.payroll-header-clean p:not(.text-white):not(.text-sun-200) { color: #334155 !important; }
+.payroll-status-clean {
+  background: #0A1F4D !important;
+  border-color: rgba(244, 197, 66, 0.35) !important;
+}
+.payroll-table-premium th,
+.payroll-table-premium td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.payroll-table-premium td:nth-child(8),
+.payroll-table-premium td:nth-child(9),
+.payroll-table-premium td:nth-child(10) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
