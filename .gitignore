@@ -1,7 +1,10 @@
+node_modules
+.next
+out
+dist
 .env
 .env.local
-.env.production
-node_modules/
-.next/
+.vercel
 *.log
-tsconfig.tsbuildinfo
+*.tsbuildinfo
+coverage
