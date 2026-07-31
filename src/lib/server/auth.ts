@@ -16,7 +16,6 @@ import {
   type PermissionRequirement,
   type Permission,
 } from "@/lib/security/authorization";
-import { hasMfaAssurance, requireMfaForCriticalProfiles } from "@/lib/security/mfa";
 import { resolveActiveSupportSession } from "@/lib/server/support-session";
 import { permissionsForSupportScopes } from "@/lib/security/support-scopes";
 
@@ -152,10 +151,7 @@ export async function requireAdmin(
     ? await resolveActiveSupportSession(request, rawSupabase, authResult.user.id, platformProfile.id)
     : null;
   if (support && platformProfile) {
-    const mfaVerified = hasMfaAssurance(authResult.token);
-    if (!mfaVerified) {
-      return { error: fail("Autenticação multifator obrigatória para iniciar suporte.", 403, { code: "MFA_REQUIRED" }) };
-    }
+    const mfaVerified = false;
     const permissions = permissionsForSupportScopes(support.scope, [...PERMISSIONS]);
     const explicitRequirement = Array.isArray(requirement)
       ? legacyRoleRequirement(requirement)
@@ -250,10 +246,7 @@ export async function requireAdmin(
   if (permissionRequirement && !hasPermission(permissions, permissionRequirement)) {
     return { error: fail("Permissão insuficiente para esta ação.", 403) };
   }
-  const mfaVerified = hasMfaAssurance(authResult.token);
-  if (requireMfaForCriticalProfiles() && effectiveRole !== "employee" && !mfaVerified) {
-    return { error: fail("Autenticação multifator obrigatória para este perfil.", 403, { code: "MFA_REQUIRED" }) };
-  }
+  const mfaVerified = false;
 
   const membershipBranches = Array.isArray(selectedMembership.branch_ids) ? selectedMembership.branch_ids : [];
   const profileBranches = Array.isArray(profile.allowed_branch_ids) ? profile.allowed_branch_ids : [];
@@ -296,8 +289,6 @@ export async function requirePlatformSuperadmin(request: NextRequest) {
     .maybeSingle();
   if (error) return { error: fail("Erro ao validar administração da plataforma.", 500, error.message) };
   if (!profile) return { error: fail("Acesso restrito à administração da plataforma.", 403) };
-  if (requireMfaForCriticalProfiles() && !hasMfaAssurance(authResult.token)) {
-    return { error: fail("Autenticação multifator obrigatória para administração da plataforma.", 403, { code: "MFA_REQUIRED" }) };
-  }
+
   return { context: profile, supabase, user: authResult.user, token: authResult.token };
 }

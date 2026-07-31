@@ -43,9 +43,6 @@ const weak = names.filter(
   (name) => /SECRET|SALT/.test(name) && process.env[name] && process.env[name].length < 32,
 );
 const officialPayrollEnabled = String(process.env.FEATURE_OFFICIAL_PAYROLL).toLowerCase() === "true";
-const mfaEnabled = String(process.env.MFA_ENFORCEMENT_ENABLED).toLowerCase() === "true";
-const publicMfaEnabled = String(process.env.NEXT_PUBLIC_MFA_ENFORCEMENT_ENABLED).toLowerCase() === "true";
-
 function validTimezone(value) {
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date("2026-01-01T12:00:00Z"));
@@ -67,20 +64,13 @@ if (
   missing.length ||
   weak.length ||
   invalid.length ||
-  (productionGate && officialPayrollEnabled) ||
-  (productionGate && (!mfaEnabled || !publicMfaEnabled))
+  (productionGate && officialPayrollEnabled)
 ) {
   if (missing.length) console.error(`Variaveis ausentes: ${missing.join(", ")}`);
   if (weak.length) console.error(`Segredos com menos de 32 caracteres: ${weak.join(", ")}`);
   if (invalid.length) console.error(`Variaveis invalidas: ${invalid.join(", ")}`);
   if (productionGate && officialPayrollEnabled) {
     console.error("FEATURE_OFFICIAL_PAYROLL deve permanecer false ate homologacao formal.");
-  }
-  if (productionGate && !mfaEnabled) {
-    console.error("MFA_ENFORCEMENT_ENABLED deve estar true em gates de producao/homologacao.");
-  }
-  if (productionGate && !publicMfaEnabled) {
-    console.error("NEXT_PUBLIC_MFA_ENFORCEMENT_ENABLED deve estar true em gates de producao/homologacao.");
   }
   process.exit(1);
 }

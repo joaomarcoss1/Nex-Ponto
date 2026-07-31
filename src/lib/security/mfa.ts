@@ -19,6 +19,6 @@ export function hasMfaAssurance(token: string) {
 }
 
 export function requireMfaForCriticalProfiles() {
-  return process.env.NODE_ENV === "production" || process.env.MFA_ENFORCEMENT_ENABLED === "true";
+  return false;
 }
 

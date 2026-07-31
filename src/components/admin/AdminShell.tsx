@@ -382,17 +382,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           router.replace("/admin/nova-senha?obrigatoria=1");
           return;
         }
-        const { data: assurance } = await createBrowserSupabaseClient().auth.mfa.getAuthenticatorAssuranceLevel();
-        if (
-          (process.env.NODE_ENV === "production" ||
-            process.env.NEXT_PUBLIC_MFA_ENFORCEMENT_ENABLED === "true" ||
-            assurance?.nextLevel === "aal2") &&
-          assurance?.currentLevel !== "aal2"
-        ) {
-          setAuthState("redirecting");
-          router.replace(`/admin/seguranca-mfa?redirect=${encodeURIComponent(pathname)}`);
-          return;
-        }
+
 
         if (cacheIsFresh) return;
 
@@ -408,11 +398,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             router.replace("/admin/selecionar-empresa");
             return;
           }
-          if (response.status === 403 && errorCode === "MFA_REQUIRED") {
-            setAuthState("redirecting");
-            router.replace(`/admin/seguranca-mfa?redirect=${encodeURIComponent(pathname)}`);
-            return;
-          }
+
           throw new Error(payload?.error || "Não foi possível validar o perfil administrativo.");
         }
 

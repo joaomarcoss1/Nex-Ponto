@@ -8,7 +8,6 @@ import {
   readSupportSessionToken,
   SUPPORT_SESSION_COOKIE,
 } from "@/lib/server/support-session";
-import { hasMfaAssurance } from "@/lib/security/mfa";
 import { SUPPORT_SCOPES, supportScopeRequiresStepUp } from "@/lib/security/support-scopes";
 import { getClientIp } from "@/lib/server/pin";
 import { privacyHash } from "@/lib/server/rate-limit";
@@ -39,7 +38,6 @@ export async function POST(request: NextRequest) {
   if ("error" in auth) return auth.error;
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return fail("Revise a sessão de suporte.", 422, parsed.error.flatten());
-  if (!hasMfaAssurance(auth.token)) return fail("Confirme o MFA antes de iniciar uma sessão de suporte.", 403, { code: "MFA_REQUIRED" });
   if (supportScopeRequiresStepUp(parsed.data.scope) && !parsed.data.stepUpConfirmed) {
     return fail("O escopo financeiro ou integral exige confirmação adicional.", 422, { code: "STEP_UP_REQUIRED" });
   }
@@ -63,7 +61,7 @@ export async function POST(request: NextRequest) {
     starts_at: new Date().toISOString(),
     expires_at: expiresAt,
     status: "active",
-    mfa_verified: true,
+    mfa_verified: false,
     approved_by: auth.user.id,
     approved_at: new Date().toISOString(),
     step_up_verified_at: parsed.data.stepUpConfirmed ? new Date().toISOString() : null,

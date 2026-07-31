@@ -36,15 +36,7 @@ export function AdminLogin({ redirectTo = "/admin", platform = false }: { redire
       }
       window.sessionStorage.removeItem("nexponto_admin_profile");
       window.sessionStorage.removeItem("nexponto_admin_profile_cached_at");
-      const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (
-        process.env.NODE_ENV === "production" ||
-        process.env.NEXT_PUBLIC_MFA_ENFORCEMENT_ENABLED === "true" ||
-        assurance?.nextLevel === "aal2"
-      ) {
-        router.replace(`/admin/seguranca-mfa?redirect=${encodeURIComponent(redirectTo)}`);
-        return;
-      }
+
       router.replace(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao entrar.");
