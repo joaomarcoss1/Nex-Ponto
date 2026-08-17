@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getBrowserAdminSession } from "@/lib/client/supabase";
+import { apiErrorFromPayload } from "@/lib/client/api-error";
 
 type Device = {
   id: string;
@@ -39,7 +40,7 @@ async function adminJson(path: string, init?: RequestInit) {
     cache: "no-store",
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || "Falha na operação.");
+  if (!response.ok) throw apiErrorFromPayload(payload, response.status, "Falha na operação.");
   return payload;
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { Crosshair, ExternalLink, LocateFixed, MapPin, Navigation, Search } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 
@@ -42,10 +42,6 @@ export function BranchMapEditor({ value, onChange }: { value: MapValue; onChange
   const latitude = toNumber(value.latitude, -4.455);
   const longitude = toNumber(value.longitude, -43.885);
   const radius = Math.max(1, Math.round(toNumber(value.allowed_radius_meters, 900)));
-
-  const embedUrl = useMemo(() => {
-    return `https://www.google.com/maps?q=${latitude},${longitude}&z=16&output=embed`;
-  }, [latitude, longitude]);
 
   useEffect(() => {
     if (!apiKey || typeof window === "undefined") return;
@@ -185,7 +181,14 @@ export function BranchMapEditor({ value, onChange }: { value: MapValue; onChange
       </div>
 
       {apiKey ? <div ref={mapRef} className="min-h-[360px] overflow-hidden rounded-[28px] border border-brand-200 bg-slate-100 shadow-inner" /> : (
-        <iframe title="Prévia Google Maps" src={embedUrl} className="min-h-[360px] w-full rounded-[28px] border border-brand-200 bg-slate-100 shadow-inner" loading="lazy" />
+        <div className="grid min-h-[260px] place-items-center rounded-[28px] border border-dashed border-brand-200 bg-white p-6 text-center shadow-inner">
+          <div className="max-w-md">
+            <MapPin className="mx-auto h-10 w-10 text-brand-600" />
+            <h4 className="mt-3 font-black text-slate-950">Mapa interativo indisponível</h4>
+            <p className="mt-2 text-sm font-semibold text-slate-600">Configure a chave do Google Maps para usar o marcador. Latitude, longitude, GPS atual e abertura externa continuam disponíveis.</p>
+            <a href={value.google_maps_url || `https://www.google.com/maps?q=${latitude},${longitude}`} target="_blank" rel="noreferrer" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-2xl bg-brand-600 px-4 text-sm font-black text-white">Abrir Google Maps</a>
+          </div>
+        </div>
       )}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -204,7 +207,7 @@ export function BranchMapEditor({ value, onChange }: { value: MapValue; onChange
         <p className="flex items-start gap-2"><Crosshair className="mt-0.5 h-4 w-4 shrink-0" /> Raio padrão amplo: 900m. Confirme se esta é a regra desejada para a unidade.</p>
         <p className="flex items-start gap-2"><Navigation className="mt-0.5 h-4 w-4 shrink-0" /> Ponto central: {latitude.toFixed(7)}, {longitude.toFixed(7)}</p>
         {message ? <p>{message}</p> : null}
-        {!apiKey ? <p>Para selecionar clicando/arrastando no mapa, configure NEXT_PUBLIC_GOOGLE_MAPS_API_KEY. Sem chave, o sistema mantém edição por coordenadas, GPS atual e prévia do Google Maps.</p> : null}
+        {!apiKey ? <p>Mapa interativo indisponível neste ambiente. A edição por coordenadas, GPS atual e abertura externa continuam disponíveis.</p> : null}
       </div>
     </div>
   );

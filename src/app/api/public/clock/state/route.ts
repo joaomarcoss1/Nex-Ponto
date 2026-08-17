@@ -4,15 +4,16 @@ import { dateKeyInTimezone, getNextActions } from "@/lib/calculations";
 import { requirePublicTenant } from "@/lib/server/public-tenant";
 import { fail, ok, readJson } from "@/lib/server/http";
 import { setEmployeeSession } from "@/lib/server/employee-session";
-import { resolveOperationalTimezone } from "@/lib/time/operational-time";
 import {
   assertPin,
+  getClientIp,
   getGenericPinErrorMessage,
   getPinBlockMessage,
   isPinTemporarilyBlocked,
   recordPinAttempt,
   verifyPin
 } from "@/lib/server/pin";
+import { consumeRateLimit, rateLimitBucket } from "@/lib/server/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +23,14 @@ export async function POST(request: NextRequest) {
     if (!employeeId) return fail("Selecione um funcionário.", 400);
 
     const { tenant, supabase } = await requirePublicTenant(request);
+    const rate = await consumeRateLimit({
+      supabase,
+      bucket: rateLimitBucket([tenant.id, "clock-state", getClientIp(request.headers)]),
+      limit: 20,
+      windowSeconds: 60,
+      blockSeconds: 180,
+    });
+    if (!rate.allowed) return fail("Muitas tentativas. Aguarde antes de tentar novamente.", 429);
     const { data: employee, error: employeeError } = await supabase
       .from("employees")
       .select("id,full_name,role,pin_hash,branch_id,branches(id,name,timezone)")
@@ -46,10 +55,7 @@ export async function POST(request: NextRequest) {
     if (!validPin) return fail(getGenericPinErrorMessage(), 401);
 
     const branchRelation = Array.isArray(employee.branches) ? employee.branches[0] : employee.branches;
-    const timezone = resolveOperationalTimezone({
-      branchTimezone: branchRelation?.timezone,
-      tenantTimezone: tenant.defaultTimezone,
-    });
+    const timezone = branchRelation?.timezone || process.env.DEFAULT_TIMEZONE || "America/Sao_Paulo";
     const today = dateKeyInTimezone(new Date(), timezone);
     const { data: openSession, error: sessionError } = await supabase
       .from("work_sessions")
@@ -87,6 +93,6 @@ export async function POST(request: NextRequest) {
     setEmployeeSession(response, tenant.id, employee.id);
     return response;
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Erro inesperado.", 500);
+    return fail("Não foi possível validar o acesso agora. Tente novamente.", 503, error instanceof Error ? error.message : error);
   }
 }

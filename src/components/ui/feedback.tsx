@@ -22,6 +22,17 @@ export function EmptyState({ title = "Nenhum registro encontrado", description, 
   );
 }
 
+export function ErrorState({ title = "Não foi possível carregar", description, requestId, action }: { title?: string; description?: string; requestId?: string; action?: ReactNode }) {
+  return (
+    <div role="alert" className="rounded-3xl border border-red-200 bg-red-50 p-6 text-center text-red-950">
+      <p className="font-black">{title}</p>
+      {description ? <p className="mt-1 text-sm font-semibold text-red-800">{description}</p> : null}
+      {requestId ? <p className="mt-2 break-all text-xs font-bold text-red-700">Código de suporte: {requestId}</p> : null}
+      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
+    </div>
+  );
+}
+
 export function ToastMessage({ type = "success", children }: { type?: "success" | "error" | "warning" | "info"; children: ReactNode }) {
   const color = type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : type === "error" ? "border-red-200 bg-red-50 text-red-800" : type === "warning" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-sky-200 bg-sky-50 text-sky-900";
   return <div role={type === "error" ? "alert" : "status"} aria-live={type === "error" ? "assertive" : "polite"} className={`mb-3 rounded-2xl border p-3 text-sm font-bold ${color}`}>{children}</div>;

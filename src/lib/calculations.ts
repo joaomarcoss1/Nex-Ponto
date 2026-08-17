@@ -1,9 +1,4 @@
 import { defaultSettings, TIMEZONE } from "@/lib/constants";
-import {
-  dateKeyInOperationalTimezone,
-  eachOperationalDateInclusive,
-  minutesSinceOperationalMidnight,
-} from "@/lib/time/operational-time";
 import type {
   DailyRateMode,
   Employee,
@@ -49,7 +44,12 @@ export type PayrollCalculation = {
 };
 
 export function dateKeyInTimezone(date = new Date(), timeZone = TIMEZONE) {
-  return dateKeyInOperationalTimezone(date, timeZone);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
 }
 
 export function nowIso() {
@@ -62,11 +62,26 @@ export function parseTimeToMinutes(time: string) {
 }
 
 export function minutesSinceMidnight(date = new Date(), timeZone = TIMEZONE) {
-  return minutesSinceOperationalMidnight(date, timeZone);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(date);
+  const hour = Number(parts.find((part) => part.type === "hour")?.value || "0");
+  const minute = Number(parts.find((part) => part.type === "minute")?.value || "0");
+  return hour * 60 + minute;
 }
 
 export function eachDateInclusive(startDate: string, endDate: string) {
-  return eachOperationalDateInclusive(startDate, endDate);
+  const days: string[] = [];
+  const cursor = new Date(`${startDate}T12:00:00Z`);
+  const end = new Date(`${endDate}T12:00:00Z`);
+  while (cursor <= end) {
+    days.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return days;
 }
 
 export function weekdayFromDateKey(dateKey: string) {

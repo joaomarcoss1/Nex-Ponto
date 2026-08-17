@@ -201,6 +201,8 @@ export type SystemSettings = {
   google_maps_enabled?: boolean;
   block_clock_without_confirmed_branch_gps?: boolean;
   require_qr_for_clock?: boolean;
+  authorized_device_mode?: "free" | "monitored" | "required";
+  outside_operating_hours_policy?: "allow" | "justify" | "block";
   block_poor_gps_accuracy?: boolean;
   lunch_tolerance_minutes?: number;
   payroll_block_critical_pending?: boolean;

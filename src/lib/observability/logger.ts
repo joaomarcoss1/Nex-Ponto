@@ -22,20 +22,10 @@ export function structuredLog(
     timestamp: new Date().toISOString(),
     level,
     service: "nexponto-web",
-    environment: process.env.OBSERVABILITY_ENVIRONMENT || process.env.NODE_ENV || "development",
-    version: process.env.NEXT_PUBLIC_APP_VERSION || "5.3.0",
     event,
     ...(sanitize(details) as Record<string, unknown>),
   });
   if (level === "error") console.error(payload);
   else if (level === "warn") console.warn(payload);
   else console.info(payload);
-}
-
-export function captureException(error: unknown, details: Record<string, unknown> = {}) {
-  structuredLog("error", "exception_captured", {
-    errorName: error instanceof Error ? error.name : "UnknownError",
-    errorMessage: error instanceof Error ? error.message : String(error),
-    ...details,
-  });
 }

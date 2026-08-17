@@ -1,5 +1,6 @@
 "use client";
 import { publicFetch } from "@/lib/client/public-api";
+import { apiErrorFromPayload } from "@/lib/client/api-error";
 
 import { CalendarClock, FileText, History, ShieldCheck } from "lucide-react";
 import { useState } from "react";
@@ -55,7 +56,7 @@ export function HistoryPage() {
         body: JSON.stringify({ employeeId: employee.id, pin, deviceInfo: navigator.userAgent })
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Não foi possível carregar seu histórico.");
+      if (!response.ok) throw apiErrorFromPayload(payload, response.status, "Não foi possível carregar seu histórico.");
       setData(payload);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao carregar histórico.");

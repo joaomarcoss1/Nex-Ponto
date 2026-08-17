@@ -1,5 +1,7 @@
 "use client";
 
+import { apiErrorFromPayload } from "@/lib/client/api-error";
+
 const STORAGE_KEY = "nexponto_public_access";
 
 function accessCodeFromLocation() {
@@ -37,7 +39,8 @@ export async function publicJson<T>(input: RequestInfo | URL, init: RequestInit 
     const message = typeof payload === "object" && payload && "error" in payload
       ? String((payload as { error: unknown }).error)
       : "Não foi possível concluir a operação.";
-    throw new Error(message);
+    void message;
+    throw apiErrorFromPayload(payload, response.status, "Não foi possível concluir a operação.");
   }
   return payload as T;
 }

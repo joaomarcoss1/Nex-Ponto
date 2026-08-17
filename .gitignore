@@ -8,3 +8,7 @@ dist
 *.log
 *.tsbuildinfo
 coverage
+.env.production
+.env.development
+.env*.local
+tsconfig.tsbuildinfo

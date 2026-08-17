@@ -76,7 +76,7 @@ function formatEntryDate(value: string, timeZone?: string | null) {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
-    timeZone: timeZone || "America/Fortaleza"
+    timeZone: timeZone || "America/Sao_Paulo"
   }).format(date);
 }
 
@@ -133,7 +133,7 @@ export function TimeEntriesPage() {
   }, [load]);
 
   function choose(entry: TimeEntryRow) {
-    const timeZone = entry.branches?.timezone || "America/Fortaleza";
+    const timeZone = entry.branches?.timezone || "America/Sao_Paulo";
     setManualOpen(false);
     setSelected(entry);
     setAdjustment({
@@ -151,7 +151,7 @@ export function TimeEntriesPage() {
   function openManualForm() {
     const employee = employees.find((item) => item.id === filters.employeeId) || employees[0];
     const branchId = filters.branchId || employee?.branch_id || branches[0]?.id || "";
-    const timeZone = branchById.get(branchId)?.timezone || "America/Fortaleza";
+    const timeZone = branchById.get(branchId)?.timezone || "America/Sao_Paulo";
     setSelected(null);
     setAdjustment(null);
     setManualOpen(true);
@@ -172,7 +172,7 @@ export function TimeEntriesPage() {
     if (!manual) return;
     const employee = employees.find((item) => item.id === employeeId);
     const nextBranchId = employee?.branch_id || manual.branch_id;
-    const currentZone = branchById.get(manual.branch_id)?.timezone || "America/Fortaleza";
+    const currentZone = branchById.get(manual.branch_id)?.timezone || "America/Sao_Paulo";
     const nextZone = branchById.get(nextBranchId)?.timezone || currentZone;
     const iso = manual.entry_timestamp ? localDateTimeToIso(manual.entry_timestamp, currentZone) : new Date().toISOString();
     setManual({
@@ -212,7 +212,7 @@ export function TimeEntriesPage() {
   async function saveManual() {
     if (!manual) return;
     const branch = branchById.get(manual.branch_id);
-    const timeZone = branch?.timezone || "America/Fortaleza";
+    const timeZone = branch?.timezone || "America/Sao_Paulo";
     setLoading(true);
     setError("");
     setMessage("");

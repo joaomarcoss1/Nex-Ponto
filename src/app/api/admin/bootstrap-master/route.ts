@@ -31,7 +31,7 @@ function bootstrapConfig() {
     ownerName: process.env.MASTER_ADMIN_NAME?.trim() || "Proprietário da empresa",
     tenantName: process.env.MASTER_TENANT_NAME?.trim() || "Empresa principal",
     tenantSlug: process.env.MASTER_TENANT_SLUG?.trim().toLowerCase() || "empresa-principal",
-    timezone: process.env.MASTER_TENANT_TIMEZONE?.trim() || "America/Fortaleza",
+    timezone: process.env.MASTER_TENANT_TIMEZONE?.trim() || "America/Sao_Paulo",
     platformSuperadminEmail: process.env.PLATFORM_SUPERADMIN_EMAIL?.trim().toLowerCase() || ""
   };
 }

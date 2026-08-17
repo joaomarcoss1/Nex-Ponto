@@ -1,7 +1,9 @@
 import type { AdminRole } from "@/types/domain";
 
 export const PERMISSIONS = [
+  "tenant.view",
   "tenant.manage",
+  "branch.view",
   "branch.manage",
   "employee.view",
   "employee.manage",
@@ -11,7 +13,8 @@ export const PERMISSIONS = [
   "time_entry.review",
   "justification.view",
   "justification.review",
-  "overtime.view",
+  "inconsistency.view",
+  "inconsistency.review",
   "overtime.review",
   "time_bank.view",
   "time_bank.manage",
@@ -28,7 +31,10 @@ export const PERMISSIONS = [
   "reports.export",
   "audit.view",
   "branding.manage",
+  "administrators.view",
   "administrators.manage",
+  "devices.view",
+  "devices.manage",
   "financial.view",
 ] as const;
 
@@ -45,55 +51,63 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
   tenant_owner: ALL_TENANT_PERMISSIONS,
   tenant_admin: ALL_TENANT_PERMISSIONS,
   hr_manager: [
-    "branch.manage", "employee.view", "employee.manage", "schedule.view", "schedule.manage", "time_entry.view", "time_entry.review",
-    "justification.view", "justification.review", "overtime.view", "overtime.review", "time_bank.view", "time_bank.manage", "payroll.view", "payroll.calculate",
+    "branch.view", "branch.manage", "employee.view", "employee.manage", "schedule.view", "schedule.manage", "time_entry.view", "time_entry.review",
+    "justification.view", "justification.review", "inconsistency.view", "inconsistency.review",
+    "devices.view", "devices.manage", "overtime.review", "time_bank.view", "time_bank.manage", "payroll.view", "payroll.calculate",
     "payroll.resolve_divergence", "payroll.hr_approve", "payroll.export",
     "reports.export", "audit.view", "financial.view",
   ],
   payroll_manager: [
-    "overtime.view", "overtime.review", "time_bank.view", "time_bank.manage", "payroll.view", "payroll.calculate",
+    "time_entry.view", "time_entry.review", "justification.view", "justification.review", "inconsistency.view", "inconsistency.review",
+    "overtime.review", "time_bank.view", "time_bank.manage", "payroll.view", "payroll.calculate",
     "payroll.approve", "payroll.resolve_divergence", "payroll.financial_approve",
     "payroll.close", "payroll.export", "payroll.reopen", "reports.export", "financial.view",
   ],
   rh_admin: [
-    "branch.manage", "employee.view", "employee.manage", "schedule.view", "schedule.manage", "time_entry.view", "time_entry.review",
-    "justification.view", "justification.review", "overtime.view", "overtime.review", "time_bank.view", "time_bank.manage", "payroll.view", "payroll.calculate",
+    "branch.view", "branch.manage", "employee.view", "employee.manage", "schedule.view", "schedule.manage", "time_entry.view", "time_entry.review",
+    "justification.view", "justification.review", "inconsistency.view", "inconsistency.review",
+    "overtime.review", "time_bank.view", "time_bank.manage", "payroll.view", "payroll.calculate",
     "reports.export", "financial.view",
   ],
   rh_analyst: [
     "employee.view", "employee.manage", "schedule.view", "schedule.manage", "time_entry.view", "time_entry.review",
-    "justification.view", "justification.review", "overtime.view", "overtime.review",
-    "time_bank.view", "time_bank.manage", "payroll.view", "reports.export",
+    "justification.view", "justification.review", "inconsistency.view", "inconsistency.review",
+    "overtime.review", "time_bank.view", "time_bank.manage", "payroll.view", "reports.export",
   ],
   finance_admin: [
-    "overtime.view", "overtime.review", "time_bank.view", "time_bank.manage", "payroll.view", "payroll.calculate",
+    "time_entry.view", "justification.view", "inconsistency.view", "overtime.review", "time_bank.view", "time_bank.manage", "payroll.view", "payroll.calculate",
     "payroll.approve", "payroll.resolve_divergence", "payroll.financial_approve",
     "payroll.close", "payroll.export", "payroll.reopen", "reports.export", "financial.view",
   ],
   regional_manager: [
-    "branch.manage", "employee.view", "employee.manage", "schedule.view", "schedule.manage", "time_entry.view", "time_entry.review",
-    "justification.view", "justification.review", "overtime.view", "overtime.review", "time_bank.view", "time_bank.manage", "reports.export",
+    "branch.view", "branch.manage", "employee.view", "employee.manage", "schedule.view", "schedule.manage", "time_entry.view", "time_entry.review",
+    "justification.view", "justification.review", "inconsistency.view", "inconsistency.review",
+    "overtime.review", "time_bank.view", "time_bank.manage", "reports.export",
   ],
   branch_manager: [
     "employee.view", "employee.manage", "schedule.view", "schedule.manage", "time_entry.view", "time_entry.review",
-    "justification.view", "justification.review", "overtime.view", "overtime.review", "time_bank.view", "time_bank.manage", "reports.export",
+    "justification.view", "justification.review", "inconsistency.view", "inconsistency.review",
+    "overtime.review", "time_bank.view", "time_bank.manage", "reports.export",
   ],
-  department_leader: ["schedule.view", "schedule.manage", "time_entry.view", "time_entry.review", "justification.view", "justification.review", "overtime.view", "overtime.review"],
+  department_leader: ["employee.view", "schedule.view", "schedule.manage", "time_entry.view", "time_entry.review", "justification.view", "inconsistency.view", "overtime.review"],
   auditor: ["payroll.view", "reports.export", "audit.view", "financial.view"],
   employee: [],
   master_admin: ALL_TENANT_PERMISSIONS,
   admin: [
-    "branch.manage", "employee.view", "employee.manage", "schedule.view", "schedule.manage", "time_entry.view", "time_entry.review",
-    "justification.view", "justification.review", "overtime.view", "overtime.review", "time_bank.view", "time_bank.manage", "payroll.view", "reports.export",
+    "branch.view", "branch.manage", "employee.view", "employee.manage", "schedule.view", "schedule.manage", "time_entry.view", "time_entry.review",
+    "justification.view", "justification.review", "inconsistency.view", "inconsistency.review",
+    "devices.view", "overtime.review", "time_bank.view", "time_bank.manage", "payroll.view", "reports.export",
   ],
   admin_geral: ALL_TENANT_PERMISSIONS,
   gerente_filial: [
     "employee.view", "employee.manage", "schedule.view", "schedule.manage", "time_entry.view", "time_entry.review",
-    "justification.view", "justification.review", "overtime.view", "overtime.review", "time_bank.view", "time_bank.manage", "reports.export",
+    "justification.view", "justification.review", "inconsistency.view", "inconsistency.review",
+    "overtime.review", "time_bank.view", "time_bank.manage", "reports.export",
   ],
   rh_financeiro: [
-    "employee.view", "employee.manage", "schedule.view", "schedule.manage", "time_entry.view", "time_entry.review",
-    "justification.view", "justification.review", "overtime.view", "overtime.review", "time_bank.view", "time_bank.manage", "payroll.view", "payroll.calculate", "payroll.approve",
+    "branch.view", "employee.view", "employee.manage", "schedule.view", "schedule.manage", "time_entry.view", "time_entry.review",
+    "justification.view", "justification.review", "inconsistency.view", "inconsistency.review",
+    "devices.view", "overtime.review", "time_bank.view", "time_bank.manage", "payroll.view", "payroll.calculate", "payroll.approve",
     "payroll.resolve_divergence", "payroll.hr_approve", "payroll.financial_approve",
     "payroll.close", "payroll.export", "payroll.reopen", "reports.export", "financial.view",
   ],
@@ -136,4 +150,24 @@ export function legacyRoleRequirement(allowedRoles: readonly AdminRole[]): Permi
     for (const permission of ROLE_PERMISSIONS[role] ?? []) permissions.add(permission);
   }
   return permissions.size ? { any: [...permissions] } : null;
+}
+
+export const isPlatformAdmin = (role: AdminRole) => role === "platform_superadmin";
+export const isTenantOwner = (role: AdminRole) => canonicalRole(role) === "tenant_owner";
+export const isTenantAdmin = (role: AdminRole) => ["tenant_owner", "tenant_admin"].includes(canonicalRole(role));
+
+function can(role: AdminRole, permission: Permission, explicit?: readonly string[] | null) {
+  return hasPermission(resolvePermissions(role, explicit), { all: [permission] });
+}
+
+export const canManageEmployees = (role: AdminRole, explicit?: readonly string[] | null) => can(role, "employee.manage", explicit);
+export const canManageBranches = (role: AdminRole, explicit?: readonly string[] | null) => can(role, "branch.manage", explicit);
+export const canManageSchedules = (role: AdminRole, explicit?: readonly string[] | null) => can(role, "schedule.manage", explicit);
+export const canReviewTimeEntries = (role: AdminRole, explicit?: readonly string[] | null) => can(role, "time_entry.review", explicit);
+export const canManagePayroll = (role: AdminRole, explicit?: readonly string[] | null) => can(role, "payroll.calculate", explicit);
+export const canExportReports = (role: AdminRole, explicit?: readonly string[] | null) => can(role, "reports.export", explicit);
+export const canAccessFinancialData = (role: AdminRole, explicit?: readonly string[] | null) => can(role, "financial.view", explicit);
+
+export function canAccessBranch(branchId: string, allowedBranchIds: readonly string[] | null | undefined) {
+  return !allowedBranchIds?.length || allowedBranchIds.includes(branchId);
 }

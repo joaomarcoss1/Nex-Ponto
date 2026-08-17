@@ -9,6 +9,7 @@ import { canAccessBranch, canViewFinancialData, scopeByBranch } from "@/lib/serv
 import { fail, ok, readJson } from "@/lib/server/http";
 import { centsToString, moneyToCents, multiplyCents } from "@/lib/services/money-v51";
 import { assertPayrollActionAvailable, type PayrollTransition } from "@/lib/security/payroll-actions";
+import { fetchAllPaginated } from "@/lib/server/pagination";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +33,49 @@ type LegalTableRow = { id: string; table_type: string; status: string; effective
 type LegalBracketRow = { legal_table_id: string; sequence: number; lower_bound: number | string; upper_bound: number | string | null; rate: number | string; deduction: number | string };
 type PlannedDayRow = { employee_id: string; work_date: string; is_day_off: boolean; status: string };
 type AbsenceRow = { employee_id: string; absence_date: string; status: string; financial_effect: "pending" | "deductible" | "non_deductible" | "paid_leave"; absence_type: string };
+type HourBankSummaryRow = { employee_id: string; opening_balance_minutes: number; credit_minutes: number; debit_minutes: number; compensation_minutes: number; expired_minutes: number; paid_minutes: number; reversal_minutes: number };
+
+const PAYROLL_MAX_ROWS = 100_000;
+
+async function fetchPayrollRows<T>(query: any, label: string) {
+  const result = await fetchAllPaginated<T>(query, { maxRows: PAYROLL_MAX_ROWS });
+  if (result.truncated) throw new Error(`${label} excedeu ${PAYROLL_MAX_ROWS} registros. Use filtros menores ou processamento assíncrono.`);
+  return result.rows;
+}
+
+function previousDateKey(date: string) {
+  const value = new Date(`${date}T00:00:00.000Z`);
+  value.setUTCDate(value.getUTCDate() - 1);
+  return value.toISOString().slice(0, 10);
+}
+
+function movementFromSummary(employeeId: string, type: HourBankMovementType, minutes: number, movementDate: string): HourBankRow | null {
+  const safeMinutes = Math.round(Math.abs(Number(minutes || 0)));
+  if (safeMinutes <= 0) return null;
+  return {
+    id: `summary:${employeeId}:${type}:${movementDate}`,
+    employee_id: employeeId,
+    movement_type: type,
+    minutes: safeMinutes,
+    status: "approved",
+    movement_date: movementDate,
+    expires_on: null,
+    reversal_of: null,
+  };
+}
+
+function syntheticHourBankRows(summary: HourBankSummaryRow[], startDate: string): HourBankRow[] {
+  const openingDate = previousDateKey(startDate);
+  return summary.flatMap((row) => [
+    movementFromSummary(row.employee_id, Number(row.opening_balance_minutes || 0) >= 0 ? "manual_adjustment" : "debit", row.opening_balance_minutes, openingDate),
+    movementFromSummary(row.employee_id, "credit", row.credit_minutes, startDate),
+    movementFromSummary(row.employee_id, "debit", row.debit_minutes, startDate),
+    movementFromSummary(row.employee_id, "compensation", row.compensation_minutes, startDate),
+    movementFromSummary(row.employee_id, "expired", row.expired_minutes, startDate),
+    movementFromSummary(row.employee_id, "paid", row.paid_minutes, startDate),
+    movementFromSummary(row.employee_id, "reversal", row.reversal_minutes, startDate),
+  ].filter(Boolean) as HourBankRow[]);
+}
 
 function overlap(startA: string, endA: string | null, startB: string, endB: string) {
   return startA <= endB && (endA || "9999-12-31") >= startB;
@@ -237,38 +281,62 @@ export async function POST(request: NextRequest) {
   if (periodError || !period) return fail("Competência não encontrada.", 404, periodError?.message);
   if (run.branch_id && !canAccessBranch(auth.context, run.branch_id)) return fail("Você não possui acesso à filial.", 403);
 
-  let employeeQuery = scopeByBranch(auth.supabase.from("employees").select("id,branch_id,full_name,monthly_salary,admission_date,termination_date").eq("active", true), auth.context, "branch_id");
+  let employeeQuery = scopeByBranch(auth.supabase.from("employees").select("id,branch_id,full_name,monthly_salary,admission_date,termination_date").eq("active", true).order("branch_id").order("full_name").order("id"), auth.context, "branch_id");
   if (run.branch_id) employeeQuery = employeeQuery.eq("branch_id", run.branch_id);
-  const { data: employeeData, error: employeeError } = await employeeQuery;
-  if (employeeError) return fail("Erro ao carregar funcionários.", 500, employeeError.message);
-  const employees = (employeeData || []) as unknown as EmployeeRow[];
+  let employees: EmployeeRow[];
+  try {
+    employees = await fetchPayrollRows<EmployeeRow>(employeeQuery, "Funcionários");
+  } catch (error) {
+    return fail("Erro ao carregar funcionários.", 500, error instanceof Error ? error.message : error);
+  }
   const employeeIds = employees.map((employee) => employee.id);
   const emptyId = "00000000-0000-0000-0000-000000000000";
 
-  const [salaryResult, contractResult, overtimeResult, hourBankResult, sessionResult, legalResult, plannedResult, absenceResult] = await Promise.all([
-    auth.supabase.from("employee_salary_history").select("id,employee_id,monthly_salary,valid_from,effective_from,valid_until").in("employee_id", employeeIds.length ? employeeIds : [emptyId]).lte("valid_from", period.end_date).or(`valid_until.is.null,valid_until.gte.${period.start_date}`),
-    auth.supabase.from("employee_contract_rules").select("id,employee_id,salary_hour_divisor,salary_day_divisor,night_shift_rule,effective_from,effective_until,payroll_rule_sets(status)").in("employee_id", employeeIds.length ? employeeIds : [emptyId]).lte("effective_from", period.end_date).or(`effective_until.is.null,effective_until.gte.${period.start_date}`),
-    auth.supabase.from("overtime_reviews").select("id,employee_id,entry_date,status,approved_overtime_minutes,approved_percentage,approved_amount,overtime_amount,destination,payment_minutes,bank_minutes").in("employee_id", employeeIds.length ? employeeIds : [emptyId]).gte("entry_date", period.start_date).lte("entry_date", period.end_date),
-    auth.supabase.from("hour_bank_movements").select("id,employee_id,movement_type,minutes,status,movement_date,expires_on,reversal_of").in("employee_id", employeeIds.length ? employeeIds : [emptyId]).lte("movement_date", period.end_date),
-    auth.supabase.from("work_sessions").select("id,employee_id,branch_id,work_date,schedule_snapshot,schedule_snapshot_checksum,contract_snapshot,status").in("employee_id", employeeIds.length ? employeeIds : [emptyId]).gte("work_date", period.start_date).lte("work_date", period.end_date),
-    auth.supabase.from("payroll_legal_tables").select("id,table_type,status,effective_from,effective_until,version").eq("status", "homologated").lte("effective_from", period.end_date).or(`effective_until.is.null,effective_until.gte.${period.start_date}`),
-    auth.supabase.from("schedule_occurrences").select("employee_id,work_date,is_day_off,status").in("employee_id", employeeIds.length ? employeeIds : [emptyId]).gte("work_date", period.start_date).lte("work_date", period.end_date),
-    auth.supabase.from("absence_justifications").select("employee_id,absence_date,status,financial_effect,absence_type").in("employee_id", employeeIds.length ? employeeIds : [emptyId]).gte("absence_date", period.start_date).lte("absence_date", period.end_date),
-  ]);
-  const firstError = [salaryResult, contractResult, overtimeResult, hourBankResult, sessionResult, legalResult, plannedResult, absenceResult].find((result) => result.error)?.error;
-  if (firstError) return fail("Erro ao montar os dados históricos do cálculo.", 500, firstError.message);
+  let salaryRows: SalaryHistoryRow[] = [];
+  let contractRows: ContractRow[] = [];
+  let overtimeRows: OvertimeRow[] = [];
+  let hourBankRows: HourBankRow[] = [];
+  let sessions: WorkSessionRow[] = [];
+  let legalTables: LegalTableRow[] = [];
+  let plannedDays: PlannedDayRow[] = [];
+  let absences: AbsenceRow[] = [];
+  try {
+    const [salaryData, contractData, overtimeData, hourBankSummaryData, sessionData, legalData, plannedData, absenceData] = await Promise.all([
+      fetchPayrollRows<SalaryHistoryRow>(auth.supabase.from("employee_salary_history").select("id,employee_id,monthly_salary,valid_from,effective_from,valid_until").in("employee_id", employeeIds.length ? employeeIds : [emptyId]).lte("valid_from", period.end_date).or(`valid_until.is.null,valid_until.gte.${period.start_date}`).order("employee_id").order("valid_from").order("id"), "Histórico salarial"),
+      fetchPayrollRows<ContractRow>(auth.supabase.from("employee_contract_rules").select("id,employee_id,salary_hour_divisor,salary_day_divisor,night_shift_rule,effective_from,effective_until,payroll_rule_sets(status)").in("employee_id", employeeIds.length ? employeeIds : [emptyId]).lte("effective_from", period.end_date).or(`effective_until.is.null,effective_until.gte.${period.start_date}`).order("employee_id").order("effective_from").order("id"), "Regras contratuais"),
+      fetchPayrollRows<OvertimeRow>(auth.supabase.from("overtime_reviews").select("id,employee_id,entry_date,status,approved_overtime_minutes,approved_percentage,approved_amount,overtime_amount,destination,payment_minutes,bank_minutes").in("employee_id", employeeIds.length ? employeeIds : [emptyId]).gte("entry_date", period.start_date).lte("entry_date", period.end_date).order("employee_id").order("entry_date").order("id"), "Revisões de horas extras"),
+      auth.rawSupabase.rpc("hour_bank_summary_v551", { p_tenant_id: auth.context.tenantId, p_employee_ids: employeeIds.length ? employeeIds : [emptyId], p_start_date: period.start_date, p_end_date: period.end_date }),
+      fetchPayrollRows<WorkSessionRow>(auth.supabase.from("work_sessions").select("id,employee_id,branch_id,work_date,schedule_snapshot,schedule_snapshot_checksum,contract_snapshot,status").in("employee_id", employeeIds.length ? employeeIds : [emptyId]).gte("work_date", period.start_date).lte("work_date", period.end_date).order("employee_id").order("work_date").order("id"), "Jornadas"),
+      fetchPayrollRows<LegalTableRow>(auth.supabase.from("payroll_legal_tables").select("id,table_type,status,effective_from,effective_until,version").eq("status", "homologated").lte("effective_from", period.end_date).or(`effective_until.is.null,effective_until.gte.${period.start_date}`).order("table_type").order("effective_from").order("id"), "Tabelas legais"),
+      fetchPayrollRows<PlannedDayRow>(auth.supabase.from("schedule_occurrences").select("employee_id,work_date,is_day_off,status").in("employee_id", employeeIds.length ? employeeIds : [emptyId]).gte("work_date", period.start_date).lte("work_date", period.end_date).order("employee_id").order("work_date"), "Escalas publicadas"),
+      fetchPayrollRows<AbsenceRow>(auth.supabase.from("absence_justifications").select("employee_id,absence_date,status,financial_effect,absence_type").in("employee_id", employeeIds.length ? employeeIds : [emptyId]).gte("absence_date", period.start_date).lte("absence_date", period.end_date).order("employee_id").order("absence_date").order("id"), "Justificativas"),
+    ]);
+    if (hourBankSummaryData.error) throw new Error(hourBankSummaryData.error.message);
+    salaryRows = salaryData;
+    contractRows = contractData;
+    overtimeRows = overtimeData;
+    hourBankRows = syntheticHourBankRows((hourBankSummaryData.data || []) as HourBankSummaryRow[], period.start_date);
+    sessions = sessionData;
+    legalTables = legalData;
+    plannedDays = plannedData;
+    absences = absenceData;
+  } catch (error) {
+    return fail("Erro ao montar os dados históricos do cálculo.", 500, error instanceof Error ? error.message : error);
+  }
 
-  const sessions = (sessionResult.data || []) as unknown as WorkSessionRow[];
   const sessionIds = sessions.map((session) => session.id);
-  const { data: timeEntryData, error: timeEntryError } = await auth.supabase
-    .from("time_entries")
-    .select("id,employee_id,work_session_id,action,entry_timestamp,status,late_minutes,early_leave_minutes")
-    .in("work_session_id", sessionIds.length ? sessionIds : [emptyId])
-    .order("entry_timestamp", { ascending: true });
-  if (timeEntryError) return fail("Erro ao carregar as marcações vinculadas às jornadas.", 500, timeEntryError.message);
-  const timeEntries = (timeEntryData || []) as unknown as TimeEntryRow[];
+  let timeEntries: TimeEntryRow[] = [];
+  try {
+    timeEntries = await fetchPayrollRows<TimeEntryRow>(auth.supabase
+      .from("time_entries")
+      .select("id,employee_id,work_session_id,action,entry_timestamp,status,late_minutes,early_leave_minutes")
+      .in("work_session_id", sessionIds.length ? sessionIds : [emptyId])
+      .order("entry_timestamp", { ascending: true })
+      .order("id", { ascending: true }), "Marcações vinculadas às jornadas");
+  } catch (error) {
+    return fail("Erro ao carregar as marcações vinculadas às jornadas.", 500, error instanceof Error ? error.message : error);
+  }
 
-  const legalTables = (legalResult.data || []) as unknown as LegalTableRow[];
   const inssTable = selectLegalTable(legalTables, "inss", period.start_date, period.end_date);
   const fgtsTable = selectLegalTable(legalTables, "fgts", period.start_date, period.end_date);
   const legalIds = [inssTable?.id, fgtsTable?.id].filter(Boolean) as string[];
@@ -278,12 +346,6 @@ export async function POST(request: NextRequest) {
   const inssBrackets: LegalBracketV51[] | undefined = inssTable ? brackets.filter((bracket) => bracket.legal_table_id === inssTable.id).map((bracket) => ({ lowerBound: bracket.lower_bound, upperBound: bracket.upper_bound, rateBasisPoints: Math.round(Number(bracket.rate) * 10_000), deduction: bracket.deduction })) : undefined;
   const fgtsRate = fgtsTable ? Math.round(Number(brackets.find((bracket) => bracket.legal_table_id === fgtsTable.id)?.rate || 0) * 10_000) : 0;
 
-  const salaryRows = (salaryResult.data || []) as unknown as SalaryHistoryRow[];
-  const contractRows = (contractResult.data || []) as unknown as ContractRow[];
-  const overtimeRows = (overtimeResult.data || []) as unknown as OvertimeRow[];
-  const hourBankRows = (hourBankResult.data || []) as unknown as HourBankRow[];
-  const plannedDays = (plannedResult.data || []) as unknown as PlannedDayRow[];
-  const absences = (absenceResult.data || []) as unknown as AbsenceRow[];
   const rubricRows: Array<Record<string, unknown>> = [];
   const divergenceRows: Array<Record<string, unknown>> = [];
   let totalEarnings = 0;

@@ -15,6 +15,7 @@ const items = [
 
 export function PublicBottomNav() {
   const pathname = usePathname();
+  if (pathname === "/") return null;
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-2 pb-[max(.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_40px_rgba(15,23,42,0.12)] backdrop-blur md:hidden" aria-label="Navegação do funcionário">
       <div className="mx-auto grid max-w-xl grid-cols-5 gap-1">

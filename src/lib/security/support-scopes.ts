@@ -10,12 +10,6 @@ export const SUPPORT_SCOPES = [
 export type SupportScope = (typeof SUPPORT_SCOPES)[number];
 
 const READ: Permission[] = [
-  "employee.view",
-  "schedule.view",
-  "time_entry.view",
-  "justification.view",
-  "overtime.view",
-  "time_bank.view",
   "payroll.view",
   "audit.view",
 ];
@@ -26,7 +20,6 @@ const OPERATIONAL: Permission[] = [
   "employee.manage",
   "schedule.manage",
   "time_entry.review",
-  "justification.review",
   "overtime.review",
   "time_bank.manage",
   "branding.manage",

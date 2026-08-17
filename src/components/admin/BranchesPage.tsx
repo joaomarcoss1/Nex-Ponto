@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { adminFetch, downloadAdminPostFile } from "@/lib/client/admin-api";
+import { dateKeyInTimezone } from "@/lib/format";
 
 const emptyForm = {
   code: "",
   name: "",
   type: "filial",
-  timezone: "America/Fortaleza",
+  timezone: "America/Sao_Paulo",
   responsible_name: "",
   phone: "",
   address: "",
@@ -48,7 +49,7 @@ export function BranchesPage() {
   const [query, setQuery] = useState("");
   const [deactivateTarget, setDeactivateTarget] = useState<any | null>(null);
   const [hours, setHours] = useState<any[]>(defaultHours);
-  const [hoursEffectiveFrom, setHoursEffectiveFrom] = useState(new Date().toISOString().slice(0, 10));
+  const [hoursEffectiveFrom, setHoursEffectiveFrom] = useState(dateKeyInTimezone());
 
   async function load() {
     try {
@@ -106,17 +107,10 @@ export function BranchesPage() {
         allowed_radius_meters: form.allowed_radius_meters === "" || form.allowed_radius_meters === null || form.allowed_radius_meters === undefined ? 250 : Number(form.allowed_radius_meters),
         id: editing?.id
       };
-      const result = await adminFetch<any>("/api/admin/branches", {
-        method: editing ? "PUT" : "POST",
-        body: JSON.stringify(payload)
+      await adminFetch<any>("/api/admin/branches/with-hours", {
+        method: "PUT",
+        body: JSON.stringify({ branch: payload, effective_from: hoursEffectiveFrom, reason: editing ? "Atualização da vigência e dos horários da filial" : "Configuração inicial dos horários da filial", hours })
       });
-      const branchId = result.branch?.id || editing?.id;
-      if (branchId) {
-        await adminFetch("/api/admin/branch-hours", {
-          method: "PUT",
-          body: JSON.stringify({ branch_id: branchId, effective_from: hoursEffectiveFrom, reason: editing ? "Atualização da vigência e dos horários da filial" : "Configuração inicial dos horários da filial", hours })
-        });
-      }
       setMessage(editing ? "Filial atualizada com geolocalização." : "Filial cadastrada com geolocalização.");
       setShowForm(false);
       setEditing(null);
@@ -250,7 +244,7 @@ export function BranchesPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Código"><Input value={form.code || ""} onChange={(event) => setForm({ ...form, code: event.target.value })} placeholder="MATRIZ" /></Field>
                 <Field label="Fuso horário">
-                  <Select value={form.timezone || "America/Fortaleza"} onChange={(event) => setForm({ ...form, timezone: event.target.value })}>
+                  <Select value={form.timezone || "America/Sao_Paulo"} onChange={(event) => setForm({ ...form, timezone: event.target.value })}>
                     <option value="America/Sao_Paulo">Brasília / São Paulo</option>
                     <option value="America/Fortaleza">Fortaleza</option>
                     <option value="America/Manaus">Manaus</option>

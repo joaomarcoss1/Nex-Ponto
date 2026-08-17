@@ -5,7 +5,6 @@ export type PublicTenant = {
   id: string;
   slug: string;
   displayName: string;
-  defaultTimezone?: string | null;
   status: "trial" | "active" | "suspended" | "cancelled";
 };
 
@@ -20,23 +19,23 @@ export async function resolvePublicTenant(request: NextRequest, supabase: Supaba
   if (host) {
     const { data: domain } = await supabase
       .from("tenant_domains")
-      .select("tenant_id, tenants!inner(id, slug, display_name, default_timezone, status)")
+      .select("tenant_id, tenants!inner(id, slug, display_name, status)")
       .eq("hostname", host)
       .eq("verified", true)
       .maybeSingle();
     const tenant = Array.isArray(domain?.tenants) ? domain?.tenants[0] : domain?.tenants;
-    if (tenant) return { id: tenant.id, slug: tenant.slug, displayName: tenant.display_name, defaultTimezone: tenant.default_timezone, status: tenant.status };
+    if (tenant) return { id: tenant.id, slug: tenant.slug, displayName: tenant.display_name, status: tenant.status };
   }
 
   if (accessCode && (/^[a-f0-9]{24,96}$/.test(accessCode) || /^[a-z0-9][a-z0-9-]{1,62}$/.test(accessCode))) {
     let query = supabase
       .from("tenants")
-      .select("id, slug, display_name, default_timezone, status");
+      .select("id, slug, display_name, status");
     query = /^[a-f0-9]{24,96}$/.test(accessCode)
       ? query.eq("public_access_code", accessCode)
       : query.eq("slug", accessCode);
     const { data: tenant } = await query.maybeSingle();
-    if (tenant) return { id: tenant.id, slug: tenant.slug, displayName: tenant.display_name, defaultTimezone: tenant.default_timezone, status: tenant.status };
+    if (tenant) return { id: tenant.id, slug: tenant.slug, displayName: tenant.display_name, status: tenant.status };
   }
 
   return null;

@@ -34,6 +34,8 @@ import {
   getBrowserAdminSession,
   getBrowserSupabaseConfigStatus,
 } from "@/lib/client/supabase";
+import { apiErrorFromPayload } from "@/lib/client/api-error";
+import { ADMIN_NAV_PERMISSION_BY_PATH, requirementAllows } from "@/lib/security/admin-route-permissions";
 import { clsx } from "clsx";
 
 const nav = [
@@ -283,27 +285,6 @@ const navGroups = [
   { key: "mais", label: "Gestão" },
 ] as const;
 
-const routePermission: Record<string, string> = {
-  "/admin/funcionarios": "employee.manage",
-  "/admin/funcionarios/importar": "employee.manage",
-  "/admin/filiais": "branch.manage",
-  "/admin/gerencia-filial": "branch.manage",
-  "/admin/horarios": "schedule.manage",
-  "/admin/modelos-turno": "schedule.manage",
-  "/admin/planejamento-escalas": "schedule.manage",
-  "/admin/escalas-profissionais": "schedule.manage",
-  "/admin/pontos": "time_entry.review",
-  "/admin/revisoes": "time_entry.review",
-  "/admin/horas-extras": "overtime.review",
-  "/admin/banco-horas": "time_bank.manage",
-  "/admin/folha": "payroll.view",
-  "/admin/relatorios": "reports.export",
-  "/admin/configuracoes": "tenant.manage",
-  "/admin/administradores": "administrators.manage",
-  "/admin/auditoria": "audit.view",
-  "/admin/seguranca": "audit.view",
-};
-
 type Profile = {
   role?: string;
   name?: string;
@@ -328,6 +309,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   );
   const [profile, setProfile] = useState<Profile | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [moreOpen]);
 
   useEffect(() => {
     let active = true;
@@ -382,7 +370,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           router.replace("/admin/nova-senha?obrigatoria=1");
           return;
         }
-
+        const { data: assurance } = await createBrowserSupabaseClient().auth.mfa.getAuthenticatorAssuranceLevel();
+        if (
+          process.env.NEXT_PUBLIC_MFA_ENFORCEMENT_ENABLED === "true" &&
+          assurance?.currentLevel !== "aal2"
+        ) {
+          setAuthState("redirecting");
+          router.replace(`/admin/seguranca-mfa?redirect=${encodeURIComponent(pathname)}`);
+          return;
+        }
 
         if (cacheIsFresh) return;
 
@@ -392,14 +388,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         });
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
-          const errorCode = payload?.code || payload?.details?.code;
+          const errorCode = payload?.code || payload?.error?.code || payload?.details?.code;
           if (response.status === 409 && errorCode === "TENANT_SELECTION_REQUIRED") {
             setAuthState("redirecting");
             router.replace("/admin/selecionar-empresa");
             return;
           }
-
-          throw new Error(payload?.error || "Não foi possível validar o perfil administrativo.");
+          if (response.status === 403 && errorCode === "MFA_REQUIRED") {
+            setAuthState("redirecting");
+            router.replace(`/admin/seguranca-mfa?redirect=${encodeURIComponent(pathname)}`);
+            return;
+          }
+          throw apiErrorFromPayload(payload, response.status, "Não foi possível validar o perfil administrativo.");
         }
 
         const payload = await response.json();
@@ -455,8 +455,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     const permissions = new Set(profile?.permissions || []);
     if (permissions.size) {
       return nav.filter((item) => {
-        const required = routePermission[item.href];
-        return !required || permissions.has("*") || permissions.has(required);
+        const required = ADMIN_NAV_PERMISSION_BY_PATH[item.href];
+        return !required || requirementAllows(profile?.permissions || [], required);
       });
     }
     const role = profile?.role || "master_admin";
@@ -610,7 +610,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-100 bg-white/95 px-2 py-2 shadow-[0_-18px_60px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden">
+      <nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-30 border-t border-brand-100 bg-white/95 px-2 py-2 shadow-[0_-18px_60px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden">
         <div className="grid grid-cols-5 gap-1">
           {bottomItems.map((item) => {
             const Icon = item.icon;
@@ -648,7 +648,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           onClick={() => setMoreOpen(false)}
         >
           <div
-            className="absolute inset-x-0 bottom-0 max-h-[82vh] overflow-y-auto rounded-t-[2rem] bg-white p-4 shadow-[0_-22px_80px_rgba(15,23,42,0.25)]"
+            className="safe-area-bottom absolute inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto overscroll-contain rounded-t-[2rem] bg-white p-4 shadow-[0_-22px_80px_rgba(15,23,42,0.25)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">

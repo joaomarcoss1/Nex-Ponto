@@ -1,4 +1,4 @@
-import { configuredFallbackTimezone } from "@/lib/time/operational-time";
+import { TIMEZONE } from "@/lib/constants";
 
 export function formatMoney(value: number | null | undefined) {
   return new Intl.NumberFormat("pt-BR", {
@@ -7,25 +7,25 @@ export function formatMoney(value: number | null | undefined) {
   }).format(Number(value || 0));
 }
 
-export function formatDate(value: string | Date | null | undefined) {
+export function formatDate(value: string | Date | null | undefined, timeZone = TIMEZONE) {
   if (!value) return "-";
   const date = typeof value === "string" ? new Date(`${value}`) : value;
   if (Number.isNaN(date.getTime())) return String(value);
-  return new Intl.DateTimeFormat("pt-BR", { timeZone: configuredFallbackTimezone() }).format(date);
+  return new Intl.DateTimeFormat("pt-BR", { timeZone }).format(date);
 }
 
-export function formatDateTime(value: string | Date | null | undefined) {
+export function formatDateTime(value: string | Date | null | undefined, timeZone = TIMEZONE) {
   if (!value) return "-";
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return String(value);
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
-    timeZone: configuredFallbackTimezone()
+    timeZone
   }).format(date);
 }
 
-export function formatDateTimeInput(value: string | Date | null | undefined, timeZone = configuredFallbackTimezone()) {
+export function formatDateTimeInput(value: string | Date | null | undefined, timeZone = TIMEZONE) {
   if (!value) return "";
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return "";
@@ -42,7 +42,7 @@ export function formatDateTimeInput(value: string | Date | null | undefined, tim
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
-export function localDateTimeToIso(value: string, timeZone = configuredFallbackTimezone()) {
+export function localDateTimeToIso(value: string, timeZone = TIMEZONE) {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
   if (!match) throw new Error("Data e hora inválidas.");
   const [, year, month, day, hour, minute] = match.map(Number);
@@ -70,4 +70,15 @@ export function minutesToHourText(minutes: number | null | undefined) {
   const h = Math.floor(safe / 60);
   const m = safe % 60;
   return `${h}h ${String(m).padStart(2, "0")}min`;
+}
+
+export function dateKeyInTimezone(value: string | Date = new Date(), timeZone = TIMEZONE) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) throw new Error("Data inválida.");
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 }

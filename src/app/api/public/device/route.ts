@@ -9,6 +9,8 @@ import {
   type DevicePolicyMode,
 } from "@/lib/security/device-identity";
 import { getSystemSettings } from "@/lib/server/settings";
+import { getClientIp } from "@/lib/server/pin";
+import { consumeRateLimit, rateLimitBucket } from "@/lib/server/rate-limit";
 
 const schema = z.object({
   employeeId: z.string().uuid().nullable().optional(),
@@ -22,11 +24,28 @@ export async function POST(request: NextRequest) {
   try {
     const parsed = schema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) return fail("Dados do dispositivo inválidos.", 422, parsed.error.flatten());
-    const { supabase } = await requirePublicTenant(request);
+    const { supabase, tenant } = await requirePublicTenant(request);
+    const clientIp = getClientIp(request.headers);
+    const bootstrapRate = await consumeRateLimit({
+      supabase,
+      bucket: rateLimitBucket([tenant.id, "public-device-bootstrap", clientIp]),
+      limit: 20,
+      windowSeconds: 300,
+      blockSeconds: 900,
+    });
+    if (!bootstrapRate.allowed) return fail(`Muitas tentativas de dispositivo. Tente novamente em ${bootstrapRate.retryAfterSeconds}s.`, 429);
     const existingIdentity = readDeviceIdentity(request);
     const createdIdentity = existingIdentity ? null : createDeviceIdentity();
     const keyHash = existingIdentity?.keyHash || createdIdentity?.keyHash;
     if (!keyHash) return fail("Não foi possível identificar o dispositivo.", 500);
+    const rate = await consumeRateLimit({
+      supabase,
+      bucket: rateLimitBucket([tenant.id, "public-device", clientIp, keyHash]),
+      limit: 12,
+      windowSeconds: 300,
+      blockSeconds: 600,
+    });
+    if (!rate.allowed) return fail(`Muitas tentativas de dispositivo. Tente novamente em ${rate.retryAfterSeconds}s.`, 429);
     const now = new Date().toISOString();
     const { data: existing } = await supabase
       .from("authorized_devices")
@@ -57,7 +76,6 @@ export async function POST(request: NextRequest) {
     if (createdIdentity) setDeviceIdentityCookie(response, createdIdentity.cookieValue);
     return response;
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Erro ao identificar dispositivo.", 500);
+    return fail("Não foi possível identificar o dispositivo agora.", 503, error instanceof Error ? error.message : error);
   }
 }
-

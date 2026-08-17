@@ -1,7 +1,6 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 
 type AllowedMime = "image/jpeg" | "image/png" | "image/webp" | "application/pdf";
-export type AttachmentScanStatus = "pending_scan" | "clean" | "infected" | "rejected" | "scan_failed" | "not_required";
 
 const EXTENSIONS: Record<AllowedMime, string> = {
   "image/jpeg": "jpg",
@@ -30,13 +29,3 @@ export function validateUpload(bytes: Uint8Array, declaredMime: string, allowed:
   };
 }
 
-export function privateStoragePath(params: {
-  tenantId: string;
-  entityType: "justifications" | "branding" | "exports" | "receipts" | "documents";
-  entityId: string;
-  extension: string;
-}) {
-  const safeExtension = params.extension.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
-  if (!safeExtension) throw new Error("ExtensÃ£o de arquivo invÃ¡lida.");
-  return `${params.tenantId}/${params.entityType}/${params.entityId}/${randomUUID()}.${safeExtension}`;
-}

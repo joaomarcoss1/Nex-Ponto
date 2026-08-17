@@ -8,6 +8,10 @@ describe("branding theme", () => {
     expect(variables["--success"]).not.toBe(variables["--brand"]);
   });
 
+  it("does not let legacy green branding replace the institutional palette", () => {
+    expect(brandingCssVariables({ primary_color: "#16803C" })["--brand"]).toBe("#1268F3");
+  });
+
   it("rejects malformed color values", () => {
     expect(safeHex("green", "#1268F3")).toBe("#1268F3");
     expect(safeHex("#abcdef", "#1268F3")).toBe("#ABCDEF");
@@ -18,4 +22,3 @@ describe("branding theme", () => {
     expect(accessibleForeground("#0A1F4D")).toBe("#FFFFFF");
   });
 });
-

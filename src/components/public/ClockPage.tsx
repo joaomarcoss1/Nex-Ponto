@@ -1,5 +1,6 @@
 "use client";
 import { publicFetch } from "@/lib/client/public-api";
+import { apiErrorFromPayload } from "@/lib/client/api-error";
 
 import { CheckCircle2, LocateFixed, MapPin, Navigation, ShieldAlert, Sparkles, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -111,7 +112,7 @@ export function ClockPage() {
     })
       .then(async (response) => {
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Falha ao identificar o dispositivo.");
+        if (!response.ok) throw apiErrorFromPayload(data, response.status, "Falha ao identificar o dispositivo.");
         setDeviceState({ status: data.device.status, mode: data.mode });
       })
       .catch(() => setDeviceState(null));
@@ -121,7 +122,7 @@ export function ClockPage() {
     publicFetch("/api/public/branches")
       .then(async (response) => {
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Não foi possível carregar filiais.");
+        if (!response.ok) throw apiErrorFromPayload(data, response.status, "Não foi possível carregar filiais.");
         setBranches(data.branches || []);
         setBranchError("");
       })
@@ -135,7 +136,7 @@ export function ClockPage() {
     publicFetch(`/api/public/qr?token=${encodeURIComponent(token)}`, { cache: "no-store" })
       .then(async (response) => {
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "QR inválido.");
+        if (!response.ok) throw apiErrorFromPayload(data, response.status, "QR inválido.");
         setBranchId(data.branch.id);
         setMessage(`QR seguro validado para ${data.branch.name}.`);
       })
@@ -170,7 +171,7 @@ export function ClockPage() {
         body: JSON.stringify({ employeeId: employee.id, pin })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Não foi possível validar o PIN.");
+      if (!response.ok) throw apiErrorFromPayload(data, response.status, "Não foi possível validar o PIN.");
       setState(data);
       setMessage("");
     } catch (err) {
@@ -221,7 +222,7 @@ export function ClockPage() {
         setMessage(data.message || "Esta marcação precisa de justificativa.");
         return;
       }
-      if (!response.ok) throw new Error(data.error || "Não foi possível registrar o ponto.");
+      if (!response.ok) throw apiErrorFromPayload(data, response.status, "Não foi possível registrar o ponto.");
       setGeoState(data.insideAllowedRadius ? "inside" : "outside");
       setLastConfirmation({
         action,
@@ -274,7 +275,7 @@ export function ClockPage() {
         }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Não foi possível testar o GPS.");
+      if (!response.ok) throw apiErrorFromPayload(data, response.status, "Não foi possível testar o GPS.");
       setGeoState((data.insideAllowedRadius || data.inside_radius) ? "inside" : "outside");
       setLastConfirmation({
         action: "gps_test",

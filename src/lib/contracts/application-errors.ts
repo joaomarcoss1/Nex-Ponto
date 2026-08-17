@@ -24,9 +24,17 @@ export const APPLICATION_ERROR_CODES = [
 export type ApplicationErrorCode = (typeof APPLICATION_ERROR_CODES)[number];
 
 export type ApplicationErrorResponse = {
-  error: string;
+  ok: false;
+  error: {
+    code: ApplicationErrorCode;
+    message: string;
+    requestId: string;
+    retryable: boolean;
+  };
   code: ApplicationErrorCode;
   correlationId: string;
+  requestId: string;
+  message: string;
   fields?: Record<string, string[]>;
   details?: unknown;
 };

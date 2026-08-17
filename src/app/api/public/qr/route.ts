@@ -24,6 +24,6 @@ export async function GET(request: NextRequest) {
     if (new Date(data.valid_until).getTime() < Date.now()) return fail("QR expirado.", 410);
     return ok({ branch: { id: branch.id, name: branch.name }, validUntil: data.valid_until });
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Erro ao validar QR.", 500);
+    return fail("Não foi possível validar o QR agora.", 503, error instanceof Error ? error.message : error);
   }
 }

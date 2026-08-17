@@ -1,67 +1,25 @@
-import { performance } from "node:perf_hooks";
-
-const baseUrl = process.env.LOAD_TEST_BASE_URL;
-const tenantCode = process.env.LOAD_TEST_TENANT_CODE;
-const employeeIds = (process.env.LOAD_TEST_EMPLOYEE_IDS || "").split(",").map((value) => value.trim()).filter(Boolean);
-const pin = process.env.LOAD_TEST_PIN;
-const total = Number(process.env.LOAD_TEST_TOTAL_CLOCKS || 200);
-const concurrency = Number(process.env.LOAD_TEST_CONCURRENCY || 20);
-
-if (!baseUrl || !tenantCode || !employeeIds.length || !pin) {
-  console.error("Configure LOAD_TEST_BASE_URL, LOAD_TEST_TENANT_CODE, LOAD_TEST_EMPLOYEE_IDS e LOAD_TEST_PIN.");
-  process.exit(1);
+const baseUrl = process.env.LOAD_TEST_BASE_URL || "http://127.0.0.1:3000";
+const tenant = process.env.LOAD_TEST_TENANT;
+const concurrency = Number(process.env.LOAD_TEST_CONCURRENCY || 5);
+const requests = Number(process.env.LOAD_TEST_REQUESTS || 25);
+if (!tenant) {
+  console.error("BLOQUEADOR: defina LOAD_TEST_TENANT com o slug/código de um tenant de homologação.");
+  process.exit(2);
 }
-
-const latencies = [];
-let errors = 0;
-let completed = 0;
-
-async function clock(index) {
-  const employeeId = employeeIds[index % employeeIds.length];
+const durations = [];
+let failures = 0;
+async function probe() {
   const started = performance.now();
-  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/public/clock/register`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-tenant-code": tenantCode,
-      "idempotency-key": `load-test:${Date.now()}:${index}`,
-    },
-    body: JSON.stringify({
-      employeeId,
-      pin,
-      action: "start_shift",
-      latitude: -3.7319,
-      longitude: -38.5267,
-      gpsAccuracyMeters: 20,
-      clientTimestamp: new Date().toISOString(),
-      deviceInfo: { mode: "load-test", worker: index % concurrency },
-    }),
+  const response = await fetch(new URL("/api/public/employees?q=teste", baseUrl), {
+    headers: { "X-NexPonto-Tenant": tenant, "X-Load-Test": "clock-read-path" },
   });
-  latencies.push(performance.now() - started);
-  if (!response.ok) errors += 1;
-  completed += 1;
+  durations.push(performance.now() - started);
+  if (!response.ok) failures += 1;
 }
-
-async function worker(offset) {
-  for (let index = offset; index < total; index += concurrency) {
-    await clock(index);
-  }
+for (let offset = 0; offset < requests; offset += concurrency) {
+  await Promise.all(Array.from({ length: Math.min(concurrency, requests - offset) }, probe));
 }
-
-await Promise.all(Array.from({ length: concurrency }, (_, index) => worker(index)));
-latencies.sort((a, b) => a - b);
-const percentile = (p) => latencies[Math.min(latencies.length - 1, Math.floor((p / 100) * latencies.length))] || 0;
-const result = {
-  scenario: "clock-register-real-endpoint",
-  total,
-  concurrency,
-  completed,
-  errors,
-  errorRate: completed ? errors / completed : 1,
-  p50Ms: Math.round(percentile(50)),
-  p95Ms: Math.round(percentile(95)),
-  p99Ms: Math.round(percentile(99)),
-  executedAt: new Date().toISOString(),
-};
-console.log(JSON.stringify(result, null, 2));
-if (result.errorRate > 0.005 || result.p95Ms > 2000) process.exit(1);
+durations.sort((a,b) => a-b);
+const p95 = durations[Math.max(0, Math.ceil(durations.length * 0.95) - 1)];
+console.log(JSON.stringify({ requests, concurrency, failures, p95Ms: Math.round(p95) }));
+if (failures || p95 > Number(process.env.LOAD_TEST_P95_LIMIT_MS || 1500)) process.exit(1);

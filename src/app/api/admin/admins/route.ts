@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/server/auth";
-import { writeAuditLog } from "@/lib/server/audit";
 import { fail, ok, readJson } from "@/lib/server/http";
 import type { AdminRole } from "@/types/domain";
 import { adminPayloadSchema, zodErrorMessage } from "@/lib/validation/schemas";
@@ -178,68 +177,28 @@ export async function POST(request: NextRequest) {
     return fail("Não foi possível preparar o login do administrador.", 400, error instanceof Error ? error.message : String(error));
   }
 
-  if (existingAdmin) {
-    const { data, error } = await auth.supabase
-      .from("admin_users")
-      .update({ ...payload, auth_user_id: authResult.userId, active: true })
-      .eq("id", existingAdmin.id)
-      .select("*")
-      .single();
-    if (error) return fail("Erro ao promover/atualizar administrador.", 500, error.message);
-    try {
-      await writeAuditLog({
-        supabase: auth.supabase,
-        context: auth.context,
-        action: "promote_or_update",
-        entity: "admin_users",
-        entityId: data.id,
-        oldData: existingAdmin,
-        newData: data,
-      });
-    } catch (auditError) {
-      await auth.supabase.from("admin_users").update({
-        email: existingAdmin.email,
-        full_name: existingAdmin.full_name,
-        role: existingAdmin.role,
-        branch_id: existingAdmin.branch_id,
-        allowed_branch_ids: existingAdmin.allowed_branch_ids || [],
-        can_view_financial_data: existingAdmin.can_view_financial_data,
-        active: existingAdmin.active,
-        auth_user_id: existingAdmin.auth_user_id,
-      }).eq("id", existingAdmin.id);
-      return fail("A atualização foi revertida porque a auditoria não pôde ser registrada.", 500, auditError instanceof Error ? auditError.message : auditError);
-    }
-    return ok({ admin: data, message: "Login vinculado e administrador atualizado com sucesso." });
-  }
-
-  const { data, error } = await auth.supabase
-    .from("admin_users")
-    .insert({ ...payload, auth_user_id: authResult.userId })
-    .select("*")
-    .single();
-
+  const { data: rpcData, error } = await auth.rawSupabase.rpc("create_tenant_admin_v55", {
+    p_actor_user_id: auth.context.userId,
+    p_tenant_id: auth.context.tenantId,
+    p_auth_user_id: authResult.userId,
+    p_email: payload.email,
+    p_full_name: payload.full_name,
+    p_role: payload.role,
+    p_branch_id: payload.branch_id,
+    p_branch_ids: payload.allowed_branch_ids,
+    p_permissions: [],
+    p_can_view_financial_data: payload.can_view_financial_data,
+  });
   if (error) {
     if (authResult.createdNow) await auth.supabase.auth.admin.deleteUser(authResult.userId).catch(() => undefined);
-    return fail("Erro ao criar administrador.", 500, error.message);
+    return fail(existingAdmin ? "Erro ao promover/atualizar administrador." : "Erro ao criar administrador.", 500, error.message);
   }
-
-  try {
-    await writeAuditLog({
-      supabase: auth.supabase,
-      context: auth.context,
-      action: "create",
-      entity: "admin_users",
-      entityId: data.id,
-      newData: data,
-    });
-  } catch (auditError) {
-    await auth.supabase.from("admin_users").delete().eq("id", data.id);
-    if (authResult.createdNow) await auth.supabase.auth.admin.deleteUser(authResult.userId).catch(() => undefined);
-    return fail("A criação foi revertida porque a auditoria não pôde ser registrada.", 500, auditError instanceof Error ? auditError.message : auditError);
-  }
+  const data = (rpcData as { admin?: Record<string, unknown> } | null)?.admin || rpcData;
+  const adminId = String((data as { id?: unknown } | null)?.id || "");
+  if (!adminId) return fail("A operação administrativa foi concluída sem confirmação do registro.", 500);
 
   const notificationResult = await auth.supabase.from("admin_notifications").insert({
-    admin_user_id: data.id,
+    admin_user_id: adminId,
     branch_id: payload.branch_id,
     title: "Troque sua senha no primeiro acesso",
     message: "Por segurança, utilize a recuperação de senha do painel para definir uma senha pessoal após o primeiro acesso.",
@@ -247,7 +206,7 @@ export async function POST(request: NextRequest) {
     payload: { must_change_password: true },
   });
   if (notificationResult.error) console.error("[admins] aviso de troca de senha não foi criado", notificationResult.error);
-  return ok({ admin: data, message: "Administrador e login criados com sucesso." });
+  return ok({ admin: data, message: existingAdmin ? "Login vinculado e administrador atualizado com sucesso." : "Administrador e login criados com sucesso." });
 }
 
 export async function PUT(request: NextRequest) {
@@ -304,37 +263,22 @@ export async function PUT(request: NextRequest) {
     return fail("Não foi possível atualizar o login do administrador.", 400, error instanceof Error ? error.message : String(error));
   }
 
-  const { data, error } = await auth.supabase
-    .from("admin_users")
-    .update({ ...payload, auth_user_id: authResult.userId })
-    .eq("id", body.id)
-    .select("*")
-    .single();
+  const { data: rpcData, error } = await auth.rawSupabase.rpc("update_tenant_admin_v55", {
+    p_actor_user_id: auth.context.userId,
+    p_tenant_id: auth.context.tenantId,
+    p_admin_user_id: body.id,
+    p_full_name: payload.full_name,
+    p_role: payload.role,
+    p_branch_id: payload.branch_id,
+    p_branch_ids: payload.allowed_branch_ids,
+    p_permissions: [],
+    p_can_view_financial_data: payload.can_view_financial_data,
+    p_active: payload.active,
+    p_auth_user_id: authResult.userId,
+    p_email: payload.email,
+  });
   if (error) return fail("Erro ao atualizar administrador.", 500, error.message);
-
-  try {
-    await writeAuditLog({
-      supabase: auth.supabase,
-      context: auth.context,
-      action: "update",
-      entity: "admin_users",
-      entityId: data.id,
-      oldData,
-      newData: data,
-    });
-  } catch (auditError) {
-    await auth.supabase.from("admin_users").update({
-      email: oldData.email,
-      full_name: oldData.full_name,
-      role: oldData.role,
-      branch_id: oldData.branch_id,
-      allowed_branch_ids: oldData.allowed_branch_ids || [],
-      can_view_financial_data: oldData.can_view_financial_data,
-      active: oldData.active,
-      auth_user_id: oldData.auth_user_id,
-    }).eq("id", oldData.id);
-    return fail("A atualização foi revertida porque a auditoria não pôde ser registrada.", 500, auditError instanceof Error ? auditError.message : auditError);
-  }
+  const data = (rpcData as { admin?: Record<string, unknown> } | null)?.admin || rpcData;
   return ok({ admin: data, message: "Administrador atualizado com sucesso." });
 }
 
@@ -360,22 +304,13 @@ export async function DELETE(request: NextRequest) {
     }
   }
 
-  const { data, error } = await auth.supabase
-    .from("admin_users")
-    .update({ active: false })
-    .eq("id", id)
-    .select("*")
-    .single();
-  if (error) return fail("Erro ao desativar administrador.", 500, error.message);
-
-  await writeAuditLog({
-    supabase: auth.supabase,
-    context: auth.context,
-    action: "deactivate",
-    entity: "admin_users",
-    entityId: id,
-    oldData,
-    newData: data,
+  const { data: rpcData, error } = await auth.rawSupabase.rpc("disable_tenant_admin_v55", {
+    p_actor_user_id: auth.context.userId,
+    p_tenant_id: auth.context.tenantId,
+    p_admin_user_id: id,
+    p_reason: "Desativação administrativa",
   });
+  if (error) return fail("Erro ao desativar administrador.", 500, error.message);
+  const data = (rpcData as { admin?: Record<string, unknown> } | null)?.admin || rpcData;
   return ok({ admin: data });
 }

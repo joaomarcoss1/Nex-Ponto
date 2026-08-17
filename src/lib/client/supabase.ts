@@ -17,14 +17,14 @@ export function getBrowserSupabaseConfigStatus() {
     configured,
     message: configured
       ? ""
-      : "Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY no .env.local para ativar login e dados reais."
+      : "Ambiente indisponível para login e dados reais. Contate o suporte da plataforma."
   };
 }
 
 export function createBrowserSupabaseClient() {
   if (browserClient) return browserClient;
 
-  browserClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "http://localhost:54321", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "missing-anon-key", {
+  browserClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "https://invalid.supabase.co", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "missing-anon-key", {
     auth: {
       persistSession: true,
       autoRefreshToken: true

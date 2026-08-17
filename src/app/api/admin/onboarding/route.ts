@@ -12,20 +12,21 @@ const updateSchema = z.object({
 
 async function readiness(auth: Awaited<ReturnType<typeof requireAdmin>>) {
   if ("error" in auth) return null;
-  const [branchRes, hoursRes, gpsRes, qrRes, brandingRes, adminRes] = await Promise.all([
+  const [branchRes, hoursRes, gpsRes, qrRes, brandingRes, adminRes, policyRes] = await Promise.all([
     auth.supabase.from("branches").select("id", { count: "exact" }).eq("active", true),
     auth.supabase.from("branch_operating_hours").select("branch_id", { count: "exact" }),
     auth.supabase.from("branches").select("id", { count: "exact" }).eq("active", true).eq("gps_ready", true),
     auth.supabase.from("branch_qr_tokens").select("id", { count: "exact" }).eq("active", true).gt("valid_until", new Date().toISOString()),
     auth.rawSupabase.from("tenant_branding").select("tenant_id,app_name,logo_url,primary_color").eq("tenant_id", auth.context.tenantId).maybeSingle(),
     auth.supabase.from("admin_users").select("id", { count: "exact" }).eq("active", true),
+    auth.rawSupabase.from("tenant_settings").select("key").eq("tenant_id", auth.context.tenantId).in("key", ["outside_operating_hours_policy", "clock_policy"]),
   ]);
   return {
     company: true,
     branding: Boolean(brandingRes.data?.app_name && brandingRes.data?.primary_color),
     first_branch: (branchRes.count || 0) > 0,
     operating_hours: (hoursRes.count || 0) >= 7,
-    clock_policy: true,
+    clock_policy: Boolean(policyRes.data?.length),
     admin_team: (adminRes.count || 0) > 0,
     gps_test: (gpsRes.count || 0) > 0,
     qr_test: (qrRes.count || 0) > 0,
@@ -35,6 +36,12 @@ async function readiness(auth: Awaited<ReturnType<typeof requireAdmin>>) {
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request);
   if ("error" in auth) return auth.error;
+  const expectedSteps = ["company", "branding", "first_branch", "operating_hours", "clock_policy", "admin_team", "gps_test", "qr_test", "activation"];
+  const { error: repairError } = await auth.rawSupabase.from("tenant_onboarding_steps").upsert(
+    expectedSteps.map((step_key) => ({ tenant_id: auth.context.tenantId, step_key, status: step_key === "company" ? "completed" : "pending" })),
+    { onConflict: "tenant_id,step_key", ignoreDuplicates: true },
+  );
+  if (repairError) return fail("Não foi possível preparar o checklist de onboarding.", 500, repairError.message);
   const { data: steps, error } = await auth.supabase
     .from("tenant_onboarding_steps")
     .select("id,step_key,status,completed_at,evidence,updated_at")

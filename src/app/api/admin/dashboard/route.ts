@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
     let branchOpen: boolean | null = null;
     if (branches.length === 1) {
       const branch = branches[0] as any;
-      const branchToday = dateKeyInTimezone(branch.timezone || process.env.DEFAULT_TIMEZONE || "America/Fortaleza");
+      const branchToday = dateKeyInTimezone(branch.timezone || process.env.DEFAULT_TIMEZONE || "America/Sao_Paulo");
       const weekday = new Date(`${branchToday}T12:00:00Z`).getUTCDay();
       const { data: hours } = await auth.supabase
         .from("branch_operating_hours")

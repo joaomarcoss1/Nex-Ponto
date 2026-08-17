@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import type { NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fail } from "@/lib/server/http";
+import { fail, requestIdFromRequest } from "@/lib/server/http";
 import { getSupabaseAdmin, getSupabaseAuthClient } from "@/lib/server/db";
 import { createTenantScopedClient } from "@/lib/server/tenant-scoped-client";
 import { requestedTenantId } from "@/lib/server/tenant-context";
@@ -16,6 +16,8 @@ import {
   type PermissionRequirement,
   type Permission,
 } from "@/lib/security/authorization";
+import { adminRouteRequirement } from "@/lib/security/admin-route-permissions";
+import { hasMfaAssurance, requireMfaForCriticalProfiles } from "@/lib/security/mfa";
 import { resolveActiveSupportSession } from "@/lib/server/support-session";
 import { permissionsForSupportScopes } from "@/lib/security/support-scopes";
 
@@ -121,14 +123,15 @@ function supportRouteRequirement(request: NextRequest): PermissionRequirement | 
 }
 
 export async function authenticatedUser(request: NextRequest): Promise<AuthenticatedUserResult> {
+  const requestId = requestIdFromRequest(request);
   const authHeader = request.headers.get("authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "";
-  if (!token) return { error: fail("Login administrativo obrigatório.", 401) } as const;
+  if (!token) return { error: fail("Login administrativo obrigatório.", 401, { requestId }) } as const;
 
   const authClient = getSupabaseAuthClient();
   const { data: userData, error: userError } = await authClient.auth.getUser(token);
   if (userError || !userData.user?.email) {
-    return { error: fail("Sessão inválida ou expirada.", 401) } as const;
+    return { error: fail("Sessão inválida ou expirada.", 401, { requestId }) } as const;
   }
   return { token, user: userData.user } as const;
 }
@@ -137,6 +140,7 @@ export async function requireAdmin(
   request: NextRequest,
   requirement?: AdminRole[] | PermissionRequirement,
 ): Promise<AdminAuthResult> {
+  const requestId = requestIdFromRequest(request);
   const authResult = await authenticatedUser(request);
   if ("error" in authResult) return authResult;
 
@@ -151,17 +155,20 @@ export async function requireAdmin(
     ? await resolveActiveSupportSession(request, rawSupabase, authResult.user.id, platformProfile.id)
     : null;
   if (support && platformProfile) {
-    const mfaVerified = false;
+    const mfaVerified = hasMfaAssurance(authResult.token);
+    if (!mfaVerified) {
+      return { error: fail("Autenticação multifator obrigatória para iniciar suporte.", 403, { code: "MFA_REQUIRED", requestId }) };
+    }
     const permissions = permissionsForSupportScopes(support.scope, [...PERMISSIONS]);
     const explicitRequirement = Array.isArray(requirement)
       ? legacyRoleRequirement(requirement)
       : requirement;
     const permissionRequirement = explicitRequirement || supportRouteRequirement(request);
     if (!permissionRequirement) {
-      return { error: fail("Esta rota não está habilitada para sessões de suporte.", 403, { code: "PERMISSION_DENIED" }) };
+      return { error: fail("Esta rota não está habilitada para sessões de suporte.", 403, { code: "PERMISSION_DENIED", requestId }) };
     }
     if (permissionRequirement && !hasPermission(permissions, permissionRequirement)) {
-      return { error: fail("A sessão de suporte não possui o escopo necessário.", 403) };
+      return { error: fail("A sessão de suporte não possui o escopo necessário.", 403, { requestId }) };
     }
     const context: AdminContext = {
       id: platformProfile.id,
@@ -197,9 +204,9 @@ export async function requireAdmin(
     .eq("active", true)
     .order("created_at", { ascending: true });
 
-  if (membershipError) return { error: fail("Erro ao validar vínculo com a empresa.", 500, membershipError.message) };
+  if (membershipError) return { error: fail("Erro ao validar vínculo com a empresa.", 500, { technicalMessage: membershipError.message, requestId }) };
   const memberships = (membershipRows || []) as MembershipRow[];
-  if (!memberships.length) return { error: fail("Usuário sem vínculo ativo com uma empresa.", 403) };
+  if (!memberships.length) return { error: fail("Usuário sem vínculo ativo com uma empresa.", 403, { requestId }) };
 
   const cookieTenantId = requestedTenantId(request, authResult.user.id);
   const selectedMembership = cookieTenantId
@@ -212,6 +219,7 @@ export async function requireAdmin(
     return {
       error: fail("Selecione a empresa que deseja administrar.", 409, {
         code: "TENANT_SELECTION_REQUIRED",
+        requestId,
         tenants: memberships.map((membership) => {
           const tenant = relationOne(membership.tenants);
           return { id: membership.tenant_id, slug: tenant?.slug, name: tenant?.display_name };
@@ -222,7 +230,7 @@ export async function requireAdmin(
 
   const tenant = relationOne(selectedMembership.tenants);
   if (!tenant || ["suspended", "cancelled", "archived"].includes(tenant.status)) {
-    return { error: fail("Empresa suspensa ou indisponível.", 403) };
+    return { error: fail("Empresa suspensa ou indisponível.", 403, { requestId }) };
   }
 
   let profileQuery = rawSupabase
@@ -234,19 +242,22 @@ export async function requireAdmin(
     : profileQuery.eq("auth_user_id", authResult.user.id);
   const { data: profile, error: profileError } = await profileQuery.maybeSingle();
 
-  if (profileError) return { error: fail("Erro ao validar permissões administrativas.", 500, profileError.message) };
-  if (!profile?.active) return { error: fail("Usuário sem perfil administrativo ativo nesta empresa.", 403) };
+  if (profileError) return { error: fail("Erro ao validar permissões administrativas.", 500, { technicalMessage: profileError.message, requestId }) };
+  if (!profile?.active) return { error: fail("Usuário sem perfil administrativo ativo nesta empresa.", 403, { requestId }) };
 
   const storedRole = (selectedMembership.role || profile.role) as AdminRole;
   const effectiveRole = canonicalRole(storedRole);
   const permissions = resolvePermissions(storedRole, selectedMembership.permissions);
   const permissionRequirement = Array.isArray(requirement)
     ? legacyRoleRequirement(requirement)
-    : requirement;
+    : requirement || adminRouteRequirement(request.nextUrl.pathname, request.method);
   if (permissionRequirement && !hasPermission(permissions, permissionRequirement)) {
-    return { error: fail("Permissão insuficiente para esta ação.", 403) };
+    return { error: fail("Permissão insuficiente para esta ação.", 403, { requestId }) };
   }
-  const mfaVerified = false;
+  const mfaVerified = hasMfaAssurance(authResult.token);
+  if (requireMfaForCriticalProfiles() && effectiveRole !== "employee" && !mfaVerified) {
+    return { error: fail("Autenticação multifator obrigatória para este perfil.", 403, { code: "MFA_REQUIRED", requestId }) };
+  }
 
   const membershipBranches = Array.isArray(selectedMembership.branch_ids) ? selectedMembership.branch_ids : [];
   const profileBranches = Array.isArray(profile.allowed_branch_ids) ? profile.allowed_branch_ids : [];
@@ -278,6 +289,7 @@ export async function requireAdmin(
 }
 
 export async function requirePlatformSuperadmin(request: NextRequest) {
+  const requestId = requestIdFromRequest(request);
   const authResult = await authenticatedUser(request);
   if ("error" in authResult) return authResult;
   const supabase = getSupabaseAdmin();
@@ -287,8 +299,10 @@ export async function requirePlatformSuperadmin(request: NextRequest) {
     .eq("auth_user_id", authResult.user.id)
     .eq("active", true)
     .maybeSingle();
-  if (error) return { error: fail("Erro ao validar administração da plataforma.", 500, error.message) };
-  if (!profile) return { error: fail("Acesso restrito à administração da plataforma.", 403) };
-
+  if (error) return { error: fail("Erro ao validar administração da plataforma.", 500, { technicalMessage: error.message, requestId }) };
+  if (!profile) return { error: fail("Acesso restrito à administração da plataforma.", 403, { requestId }) };
+  if (requireMfaForCriticalProfiles() && !hasMfaAssurance(authResult.token)) {
+    return { error: fail("Autenticação multifator obrigatória para administração da plataforma.", 403, { code: "MFA_REQUIRED", requestId }) };
+  }
   return { context: profile, supabase, user: authResult.user, token: authResult.token };
 }

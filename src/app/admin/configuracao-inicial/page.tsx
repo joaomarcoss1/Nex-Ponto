@@ -7,6 +7,7 @@ import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { ToastMessage } from "@/components/ui/feedback";
+import { apiErrorFromPayload } from "@/lib/client/api-error";
 
 interface SetupStatus {
   setupAvailable?: boolean;
@@ -28,7 +29,7 @@ export default function Page() {
     fetch("/api/admin/bootstrap-master", { cache: "no-store" })
       .then(async (response) => ({ response, data: (await response.json()) as SetupStatus }))
       .then(({ response, data }) => {
-        if (!response.ok) throw new Error(data.error || "Falha ao verificar a configuração inicial.");
+        if (!response.ok) throw apiErrorFromPayload(data, response.status, "Falha ao verificar a configuração inicial.");
         setAvailable(Boolean(data.setupAvailable));
         setTenantName(data.tenantName || "Empresa principal");
         setConfiguredEmail(data.configuredEmail || null);
@@ -50,7 +51,7 @@ export default function Page() {
         body: JSON.stringify(form)
       });
       const data = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(data.error || "Falha na ativação.");
+      if (!response.ok) throw apiErrorFromPayload(data, response.status, "Falha na ativação.");
       router.replace("/admin/login?setup=success");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Falha na ativação.");

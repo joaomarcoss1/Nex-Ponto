@@ -13,7 +13,15 @@ import type { ExportTable } from "@/lib/server/exporters";
 import { fail, ok } from "@/lib/server/http";
 import { canViewFinancialData, canAccessBranch, scopeByBranch } from "@/lib/server/branch-permissions";
 import { getSystemSettings } from "@/lib/server/settings";
+import { fetchAllPaginated } from "@/lib/server/pagination";
 
+const REPORT_MAX_ROWS = 50_000;
+
+async function fetchReportRows<T>(query: any, label: string) {
+  const result = await fetchAllPaginated<T>(query, { maxRows: REPORT_MAX_ROWS });
+  if (result.truncated) throw new Error(`${label} excedeu ${REPORT_MAX_ROWS} registros. Use exportação assíncrona ou reduza o período/filtros.`);
+  return result.rows;
+}
 
 function asText(value: unknown) {
   return value === null || value === undefined || value === "" ? "-" : String(value);
@@ -455,15 +463,12 @@ async function loadAbsenceRows(auth: Awaited<ReturnType<typeof requireAdmin>> & 
   if (params.get("branchId")) employeesQuery = employeesQuery.eq("branch_id", params.get("branchId"));
   if (params.get("employeeId")) employeesQuery = employeesQuery.eq("id", params.get("employeeId"));
   if (params.get("role")) employeesQuery = employeesQuery.ilike("role", `%${params.get("role")}%`);
-  const [{ data: employees, error: employeesError }, { data: entries, error: entriesError }, { data: justifications, error: justificationsError }] =
+  const [employees, entries, justifications] =
     await Promise.all([
-      employeesQuery,
-      scopeByBranch(auth.supabase.from("time_entries").select("*").gte("entry_date", startDate).lte("entry_date", endDate), auth.context, "branch_id"),
-      scopeByBranch(auth.supabase.from("absence_justifications").select("*").gte("absence_date", startDate).lte("absence_date", endDate), auth.context, "branch_id")
+      fetchReportRows<any>(employeesQuery, "Funcionários do relatório de faltas"),
+      fetchReportRows<any>(scopeByBranch(auth.supabase.from("time_entries").select("*").gte("entry_date", startDate).lte("entry_date", endDate).order("entry_date").order("employee_id").order("id"), auth.context, "branch_id"), "Marcações do relatório de faltas"),
+      fetchReportRows<any>(scopeByBranch(auth.supabase.from("absence_justifications").select("*").gte("absence_date", startDate).lte("absence_date", endDate).order("absence_date").order("employee_id").order("id"), auth.context, "branch_id"), "Justificativas do relatório de faltas")
     ]);
-  if (employeesError) throw new Error(employeesError.message);
-  if (entriesError) throw new Error(entriesError.message);
-  if (justificationsError) throw new Error(justificationsError.message);
   const settings = await getSystemSettings(auth.supabase);
   const { schedules, holidays } = await fetchScheduleContext({
     supabase: auth.supabase,
@@ -473,8 +478,8 @@ async function loadAbsenceRows(auth: Awaited<ReturnType<typeof requireAdmin>> & 
     endDate
   });
   let rows = buildAbsenceReport({
-    employees: (employees || []) as any,
-    entries: (entries || []) as any,
+    employees: employees as any,
+    entries: entries as any,
     justifications: justifications || [],
     schedules,
     holidays,
@@ -492,26 +497,23 @@ async function loadEmployeeReportRows(auth: Awaited<ReturnType<typeof requireAdm
   const startDate = params.get("startDate") || new Date().toISOString().slice(0, 8) + "01";
   const endDate = params.get("endDate") || new Date().toISOString().slice(0, 10);
   const [employeesRes, entriesRes, justificationsRes, overtimeRes, payrollRes] = await Promise.all([
-    scopeByBranch(auth.supabase.from("employees").select("id, full_name, role, employment_type, branch_id, branches:branches!employees_branch_id_fkey(name)").eq("active", true), auth.context, "branch_id"),
-    scopeByBranch(auth.supabase.from("time_entries").select("*").gte("entry_date", startDate).lte("entry_date", endDate), auth.context, "branch_id"),
-    scopeByBranch(auth.supabase.from("absence_justifications").select("*").gte("absence_date", startDate).lte("absence_date", endDate), auth.context, "branch_id"),
-    scopeByBranch(auth.supabase.from("overtime_reviews").select("*").gte("entry_date", startDate).lte("entry_date", endDate), auth.context, "branch_id"),
-    scopeByBranch(auth.supabase.from("payroll_items").select("*, payroll_periods!inner(start_date,end_date,status)").gte("payroll_periods.start_date", startDate).lte("payroll_periods.end_date", endDate), auth.context, "branch_id")
+    fetchReportRows<any>(scopeByBranch(auth.supabase.from("employees").select("id, full_name, role, employment_type, branch_id, branches:branches!employees_branch_id_fkey(name)").eq("active", true).order("branch_id").order("full_name").order("id"), auth.context, "branch_id"), "Funcionários"),
+    fetchReportRows<any>(scopeByBranch(auth.supabase.from("time_entries").select("*").gte("entry_date", startDate).lte("entry_date", endDate).order("entry_date").order("employee_id").order("id"), auth.context, "branch_id"), "Marcações"),
+    fetchReportRows<any>(scopeByBranch(auth.supabase.from("absence_justifications").select("*").gte("absence_date", startDate).lte("absence_date", endDate).order("absence_date").order("employee_id").order("id"), auth.context, "branch_id"), "Justificativas"),
+    fetchReportRows<any>(scopeByBranch(auth.supabase.from("overtime_reviews").select("*").gte("entry_date", startDate).lte("entry_date", endDate).order("entry_date").order("employee_id").order("id"), auth.context, "branch_id"), "Horas extras"),
+    fetchReportRows<any>(scopeByBranch(auth.supabase.from("payroll_items").select("*, payroll_periods!inner(start_date,end_date,status)").gte("payroll_periods.start_date", startDate).lte("payroll_periods.end_date", endDate).order("employee_id").order("id"), auth.context, "branch_id"), "Itens de folha")
   ]);
-  for (const response of [employeesRes, entriesRes, justificationsRes, overtimeRes, payrollRes]) {
-    if (response.error) throw new Error(response.error.message);
-  }
-  let employees = employeesRes.data || [];
+  let employees = employeesRes || [];
   if (params.get("employeeId")) employees = employees.filter((employee: any) => employee.id === params.get("employeeId"));
   if (params.get("branchId")) employees = employees.filter((employee: any) => employee.branch_id === params.get("branchId"));
   if (params.get("role")) employees = employees.filter((employee: any) => String(employee.role || "").toLowerCase().includes(String(params.get("role")).toLowerCase()));
   if (params.get("employmentType")) employees = employees.filter((employee: any) => employee.employment_type === params.get("employmentType"));
 
   return employees.map((employee: any) => {
-    const entries = (entriesRes.data || []).filter((entry: any) => entry.employee_id === employee.id);
-    const justifications = (justificationsRes.data || []).filter((item: any) => item.employee_id === employee.id);
-    const overtime = (overtimeRes.data || []).filter((item: any) => item.employee_id === employee.id);
-    const payrollItems = (payrollRes.data || []).filter((item: any) => item.employee_id === employee.id);
+    const entries = entriesRes.filter((entry: any) => entry.employee_id === employee.id);
+    const justifications = justificationsRes.filter((item: any) => item.employee_id === employee.id);
+    const overtime = overtimeRes.filter((item: any) => item.employee_id === employee.id);
+    const payrollItems = payrollRes.filter((item: any) => item.employee_id === employee.id);
     const payroll = payrollItems.reduce(
       (acc: any, item: any) => ({
         final_amount: acc.final_amount + Number(item.final_amount || 0),
@@ -559,24 +561,21 @@ async function loadBranchReportRows(auth: Awaited<ReturnType<typeof requireAdmin
   const startDate = params.get("startDate") || new Date().toISOString().slice(0, 8) + "01";
   const endDate = params.get("endDate") || new Date().toISOString().slice(0, 10);
   const [branchesRes, employeesRes, entriesRes, justificationsRes, overtimeRes, payrollRes] = await Promise.all([
-    scopeByBranch(auth.supabase.from("branches").select("*").eq("active", true).order("name"), auth.context, "id"),
-    scopeByBranch(auth.supabase.from("employees").select("id, full_name, role, branch_id, active").eq("active", true), auth.context, "branch_id"),
-    scopeByBranch(auth.supabase.from("time_entries").select("*").gte("entry_date", startDate).lte("entry_date", endDate), auth.context, "branch_id"),
-    scopeByBranch(auth.supabase.from("absence_justifications").select("*").gte("absence_date", startDate).lte("absence_date", endDate), auth.context, "branch_id"),
-    scopeByBranch(auth.supabase.from("overtime_reviews").select("*, employees(full_name)").gte("entry_date", startDate).lte("entry_date", endDate), auth.context, "branch_id"),
-    scopeByBranch(auth.supabase.from("payroll_items").select("*, payroll_periods!inner(start_date,end_date,status)").gte("payroll_periods.start_date", startDate).lte("payroll_periods.end_date", endDate), auth.context, "branch_id")
+    fetchReportRows<any>(scopeByBranch(auth.supabase.from("branches").select("*").eq("active", true).order("name").order("id"), auth.context, "id"), "Filiais"),
+    fetchReportRows<any>(scopeByBranch(auth.supabase.from("employees").select("id, full_name, role, branch_id, active").eq("active", true).order("branch_id").order("full_name").order("id"), auth.context, "branch_id"), "Funcionários por filial"),
+    fetchReportRows<any>(scopeByBranch(auth.supabase.from("time_entries").select("*").gte("entry_date", startDate).lte("entry_date", endDate).order("branch_id").order("entry_date").order("id"), auth.context, "branch_id"), "Marcações por filial"),
+    fetchReportRows<any>(scopeByBranch(auth.supabase.from("absence_justifications").select("*").gte("absence_date", startDate).lte("absence_date", endDate).order("branch_id").order("absence_date").order("id"), auth.context, "branch_id"), "Justificativas por filial"),
+    fetchReportRows<any>(scopeByBranch(auth.supabase.from("overtime_reviews").select("*, employees(full_name)").gte("entry_date", startDate).lte("entry_date", endDate).order("branch_id").order("entry_date").order("id"), auth.context, "branch_id"), "Horas extras por filial"),
+    fetchReportRows<any>(scopeByBranch(auth.supabase.from("payroll_items").select("*, payroll_periods!inner(start_date,end_date,status)").gte("payroll_periods.start_date", startDate).lte("payroll_periods.end_date", endDate).order("branch_id").order("employee_id").order("id"), auth.context, "branch_id"), "Folha por filial")
   ]);
-  for (const response of [branchesRes, employeesRes, entriesRes, justificationsRes, overtimeRes, payrollRes]) {
-    if (response.error) throw new Error(response.error.message);
-  }
-  let branches = branchesRes.data || [];
+  let branches = branchesRes || [];
   if (params.get("branchId")) branches = branches.filter((branch: any) => branch.id === params.get("branchId"));
   return branches.map((branch: any) => {
-    const employees = (employeesRes.data || []).filter((employee: any) => employee.branch_id === branch.id);
-    const entries = (entriesRes.data || []).filter((entry: any) => entry.branch_id === branch.id);
-    const justifications = (justificationsRes.data || []).filter((item: any) => item.branch_id === branch.id);
-    const overtime = (overtimeRes.data || []).filter((item: any) => item.branch_id === branch.id);
-    const payroll = (payrollRes.data || []).filter((item: any) => item.branch_id === branch.id);
+    const employees = employeesRes.filter((employee: any) => employee.branch_id === branch.id);
+    const entries = entriesRes.filter((entry: any) => entry.branch_id === branch.id);
+    const justifications = justificationsRes.filter((item: any) => item.branch_id === branch.id);
+    const overtime = overtimeRes.filter((item: any) => item.branch_id === branch.id);
+    const payroll = payrollRes.filter((item: any) => item.branch_id === branch.id);
     const occurrenceByEmployee = new Map<string, { name: string; count: number }>();
     entries.forEach((entry: any) => {
       if (entry.status !== "valid" || entry.late_minutes > 0 || entry.early_leave_minutes > 0 || !entry.inside_allowed_radius) {
@@ -624,11 +623,10 @@ async function loadLunchReportRows(auth: Awaited<ReturnType<typeof requireAdmin>
     .gte("entry_date", startDate)
     .lte("entry_date", endDate)
     .order("entry_timestamp", { ascending: true })
-    .limit(5001), auth.context, "branch_id");
+    .order("id", { ascending: true }), auth.context, "branch_id");
   if (params.get("branchId")) query = query.eq("branch_id", params.get("branchId"));
   if (params.get("employeeId")) query = query.eq("employee_id", params.get("employeeId"));
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  const data = await fetchReportRows<any>(query, "Relatório de almoço");
   const groups = new Map<string, any[]>();
   (data || []).forEach((entry: any) => {
     const key = `${entry.employee_id}:${entry.entry_date}`;
@@ -690,8 +688,7 @@ export async function GET(request: NextRequest) {
       let query = scopeByBranch(auth.supabase
         .from("time_entries")
         .select("*, employees(full_name, role), branches:branches!time_entries_branch_id_fkey(name)")
-        .order("entry_timestamp", { ascending: false })
-        .limit(5001), auth.context, "branch_id");
+        .order("entry_timestamp", { ascending: false }), auth.context, "branch_id");
       if (type === "late") query = query.gt("late_minutes", 0);
       if (type === "early_leave") query = query.gt("early_leave_minutes", 0);
       if (params.get("branchId")) query = query.eq("branch_id", params.get("branchId"));
@@ -700,43 +697,36 @@ export async function GET(request: NextRequest) {
       if (params.get("action")) query = query.eq("action", params.get("action"));
       if (params.get("startDate")) query = query.gte("entry_date", params.get("startDate"));
       if (params.get("endDate")) query = query.lte("entry_date", params.get("endDate"));
-      const { data: rows, error } = await query;
-      if (error) throw new Error(error.message);
-      data = rows || [];
+      data = await fetchReportRows<any>(query, "Relatório de pontos");
     } else if (type === "overtime") {
-      let query = scopeByBranch(auth.supabase.from("overtime_reviews").select("*, employees(full_name, role), branches:branches!overtime_reviews_branch_id_fkey(name)").order("entry_date", { ascending: false }).limit(5001), auth.context, "branch_id");
+      let query = scopeByBranch(auth.supabase.from("overtime_reviews").select("*, employees(full_name, role), branches:branches!overtime_reviews_branch_id_fkey(name)").order("entry_date", { ascending: false }), auth.context, "branch_id");
       if (params.get("branchId")) query = query.eq("branch_id", params.get("branchId"));
       if (params.get("employeeId")) query = query.eq("employee_id", params.get("employeeId"));
       if (params.get("status")) query = query.eq("status", params.get("status"));
       if (params.get("startDate")) query = query.gte("entry_date", params.get("startDate"));
       if (params.get("endDate")) query = query.lte("entry_date", params.get("endDate"));
-      const { data: rows, error } = await query;
-      if (error) throw new Error(error.message);
-      data = rows || [];
+      data = await fetchReportRows<any>(query, "Relatório de horas extras");
     } else if (type === "justifications") {
-      let query = scopeByBranch(auth.supabase.from("absence_justifications").select("*, employees(full_name, role), branches:branches!absence_justifications_branch_id_fkey(name)").order("absence_date", { ascending: false }).limit(5001), auth.context, "branch_id");
+      let query = scopeByBranch(auth.supabase.from("absence_justifications").select("*, employees(full_name, role), branches:branches!absence_justifications_branch_id_fkey(name)").order("absence_date", { ascending: false }), auth.context, "branch_id");
       if (params.get("branchId")) query = query.eq("branch_id", params.get("branchId"));
       if (params.get("employeeId")) query = query.eq("employee_id", params.get("employeeId"));
       if (params.get("status")) query = query.eq("status", params.get("status"));
       if (params.get("startDate")) query = query.gte("absence_date", params.get("startDate"));
       if (params.get("endDate")) query = query.lte("absence_date", params.get("endDate"));
-      const { data: rows, error } = await query;
-      if (error) throw new Error(error.message);
-      data = rows || [];
+      data = await fetchReportRows<any>(query, "Relatório de justificativas");
     } else if (type === "inconsistencies") {
-      let query = scopeByBranch(auth.supabase.from("time_entries").select("*, employees(full_name, role), branches:branches!time_entries_branch_id_fkey(name)").order("entry_timestamp", { ascending: true }).limit(5001), auth.context, "branch_id");
+      let query = scopeByBranch(auth.supabase.from("time_entries").select("*, employees(full_name, role), branches:branches!time_entries_branch_id_fkey(name)").order("entry_timestamp", { ascending: true }), auth.context, "branch_id");
       if (params.get("branchId")) query = query.eq("branch_id", params.get("branchId"));
       if (params.get("employeeId")) query = query.eq("employee_id", params.get("employeeId"));
       if (params.get("startDate")) query = query.gte("entry_date", params.get("startDate"));
       if (params.get("endDate")) query = query.lte("entry_date", params.get("endDate"));
-      const { data: rows, error } = await query;
-      if (error) throw new Error(error.message);
+      const rows = await fetchReportRows<any>(query, "Relatório de inconsistências");
       data = analyzeInconsistencies((rows || []) as any).map((item) => ({
         ...item,
         employee_name: (rows || []).find((entry: any) => entry.id === item.entry_id)?.employees?.full_name || item.employee_id
       }));
     } else {
-      let query = scopeByBranch(auth.supabase.from("payroll_items").select("*, payroll_periods!inner(title,start_date,end_date,status,payment_day,branch_id)").order("employee_name", { ascending: true }).limit(5001), auth.context, "branch_id");
+      let query = scopeByBranch(auth.supabase.from("payroll_items").select("*, payroll_periods!inner(title,start_date,end_date,status,payment_day,branch_id)").order("employee_name", { ascending: true }), auth.context, "branch_id");
       if (params.get("payrollId")) query = query.eq("payroll_period_id", params.get("payrollId"));
       if (params.get("branchId")) query = query.eq("branch_id", params.get("branchId"));
       if (params.get("employeeId")) query = query.eq("employee_id", params.get("employeeId"));
@@ -745,13 +735,7 @@ export async function GET(request: NextRequest) {
       if (params.get("endDate")) query = query.lte("payroll_periods.end_date", params.get("endDate"));
       if (params.get("role")) query = query.ilike("role", `%${params.get("role")}%`);
       if (params.get("employmentType")) query = query.eq("employment_type", params.get("employmentType"));
-      const { data: rows, error } = await query;
-      if (error) throw new Error(error.message);
-      data = rows || [];
-    }
-
-    if (data.length >= 5001) {
-      return fail("O relatório excede 5.000 registros. Reduza o período ou aplique filtros de filial e colaborador.", 413);
+      data = await fetchReportRows<any>(query, "Relatório de pré-folha");
     }
 
     if (!financialAllowed) {

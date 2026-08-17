@@ -2,8 +2,8 @@ import { NextRequest } from "next/server";
 import { dateKeyInTimezone } from "@/lib/calculations";
 import { requirePublicTenant } from "@/lib/server/public-tenant";
 import { fail, ok, readJson } from "@/lib/server/http";
-import { assertPin, isPinTemporarilyBlocked, recordPinAttempt, verifyPin } from "@/lib/server/pin";
-import { addDaysToDateKey, resolveOperationalTimezone } from "@/lib/time/operational-time";
+import { assertPin, getClientIp, isPinTemporarilyBlocked, recordPinAttempt, verifyPin } from "@/lib/server/pin";
+import { consumeRateLimit, rateLimitBucket } from "@/lib/server/rate-limit";
 
 
 export async function POST(request: NextRequest) {
@@ -14,6 +14,8 @@ export async function POST(request: NextRequest) {
     if (!employeeId) return fail("Selecione um funcionário.", 400);
 
     const { supabase, tenant } = await requirePublicTenant(request);
+    const rate = await consumeRateLimit({ supabase, bucket: rateLimitBucket([tenant.id, "history", getClientIp(request.headers)]), limit: 15, windowSeconds: 60, blockSeconds: 180 });
+    if (!rate.allowed) return fail("Muitas consultas. Aguarde antes de tentar novamente.", 429);
     const { data: employee, error: employeeError } = await supabase
       .from("employees")
       .select("id, full_name, role, branch_id, pin_hash, branches:branches!employees_branch_id_fkey(name,timezone)")
@@ -39,12 +41,9 @@ export async function POST(request: NextRequest) {
     if (!validPin) return fail("PIN inválido.", 401);
 
     const branchRelation = Array.isArray(employee.branches) ? employee.branches[0] : employee.branches;
-    const branchTimezone = resolveOperationalTimezone({
-      branchTimezone: branchRelation?.timezone,
-      tenantTimezone: tenant.defaultTimezone,
-    });
+    const branchTimezone = branchRelation?.timezone || process.env.DEFAULT_TIMEZONE || "America/Sao_Paulo";
     const today = dateKeyInTimezone(new Date(), branchTimezone);
-    const thirtyDaysAgo = addDaysToDateKey(today, -30);
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const [todayEntriesRes, recentEntriesRes, justificationsRes] = await Promise.all([
       supabase
         .from("time_entries")
@@ -111,6 +110,6 @@ export async function POST(request: NextRequest) {
       }
     });
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Erro inesperado.", 500);
+    return fail("Não foi possível carregar o histórico agora. Tente novamente.", 503, error instanceof Error ? error.message : error);
   }
 }

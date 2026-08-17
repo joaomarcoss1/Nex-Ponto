@@ -4,10 +4,11 @@ import { getSupabaseAdmin } from "@/lib/server/db";
 import { fail, ok } from "@/lib/server/http";
 import {
   createRegulatoryPreview,
-type RegulatoryExportEntry,
+  type RegulatoryExportEntry,
   type RegulatoryExportKind,
 } from "@/lib/services/regulatory-exports";
 import { structuredLog } from "@/lib/observability/logger";
+import { fetchAllPaginated } from "@/lib/server/pagination";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,89 +23,18 @@ function authorized(request: NextRequest) {
     timingSafeEqual(expectedBuffer, receivedBuffer);
 }
 
-type AttachmentScanPayload = {
-  bucket: string;
-  path: string;
-  justificationId: string;
-  sha256?: string | null;
-  mime?: string | null;
-};
-
-function attachmentScanPayload(value: unknown): AttachmentScanPayload {
-  const payload = value as Partial<AttachmentScanPayload>;
-  if (!payload.bucket || !payload.path || !payload.justificationId) {
-    throw new Error("ATTACHMENT_SCAN_PAYLOAD_INVALID");
-  }
-  return {
-    bucket: payload.bucket,
-    path: payload.path,
-    justificationId: payload.justificationId,
-    sha256: payload.sha256 || null,
-    mime: payload.mime || null,
-  };
-}
-
 export async function POST(request: NextRequest) {
   if (!authorized(request)) return fail("Não autorizado.", 401, { code: "UNAUTHORIZED" });
   const supabase = getSupabaseAdmin();
   const { data: claimed, error: claimError } = await supabase.rpc("claim_background_job_v53", {
     p_worker_id: process.env.JOB_WORKER_ID || "nexponto-api-worker",
-    p_job_types: ["regulatory_export_preview", "attachment_scan"],
+    p_job_types: ["regulatory_export_preview"],
   });
   if (claimError) return fail("Erro ao reservar trabalho.", 500, claimError.message);
   const job = Array.isArray(claimed) ? claimed[0] : claimed;
   if (!job) return ok({ processed: false });
 
   try {
-    if (job.job_type === "attachment_scan") {
-      const payload = attachmentScanPayload(job.payload);
-      const scannerMode = process.env.MALWARE_SCANNER_MODE || "external_required";
-      if (scannerMode !== "metadata_only") {
-        await supabase.from("absence_justifications").update({
-          attachment_scan_status: "scan_failed",
-          attachment_scan_result: {
-            scanner: scannerMode,
-            result: "scanner_not_configured",
-            scannedAt: new Date().toISOString(),
-          },
-          attachment_scanned_at: new Date().toISOString(),
-        }).eq("id", payload.justificationId).eq("tenant_id", job.tenant_id);
-        throw new Error("MALWARE_SCANNER_NOT_CONFIGURED");
-      }
-
-      const { data: objects, error: objectError } = await supabase.storage.from(payload.bucket).list(
-        payload.path.split("/").slice(0, -1).join("/"),
-        { search: payload.path.split("/").at(-1), limit: 1 },
-      );
-      if (objectError) throw new Error(objectError.message);
-      if (!objects?.length) throw new Error("ATTACHMENT_OBJECT_NOT_FOUND");
-
-      await supabase.from("absence_justifications").update({
-        attachment_scan_status: "clean",
-        attachment_scan_result: {
-          scanner: "metadata_only",
-          result: "clean",
-          sha256: payload.sha256,
-          mime: payload.mime,
-          scannedAt: new Date().toISOString(),
-        },
-        attachment_scanned_at: new Date().toISOString(),
-      }).eq("id", payload.justificationId).eq("tenant_id", job.tenant_id);
-      await supabase.from("background_jobs").update({
-        status: "completed",
-        progress: 100,
-        completed_at: new Date().toISOString(),
-        result: { scanner: "metadata_only", attachmentId: payload.justificationId },
-        lease_expires_at: null,
-      }).eq("id", job.id);
-      structuredLog("info", "attachment_scan_completed", {
-        jobId: job.id,
-        tenantId: job.tenant_id,
-        scanner: "metadata_only",
-      });
-      return ok({ processed: true, jobId: job.id });
-    }
-
     const payload = job.payload as {
       kind: RegulatoryExportKind;
       startDate: string;
@@ -119,12 +49,13 @@ export async function POST(request: NextRequest) {
       .lte("entry_date", payload.endDate)
       .order("nsr");
     if (payload.branchId) query = query.eq("branch_id", payload.branchId);
-    const { data: entries, error: entriesError } = await query;
-    if (entriesError) throw new Error(entriesError.message);
+    query = query.order("id");
+    const entriesResult = await fetchAllPaginated<RegulatoryExportEntry>(query, { maxRows: 100_000 });
+    if (entriesResult.truncated) throw new Error("Exportação regulatória excedeu 100.000 marcações. Divida o período ou filial.");
     const generated = createRegulatoryPreview(
       payload.kind,
       job.tenant_id,
-      (entries || []) as RegulatoryExportEntry[],
+      entriesResult.rows,
     );
     const objectPath = `${job.tenant_id}/regulatory/${job.id}-${payload.kind}.txt`;
     const { error: storageError } = await supabase.storage

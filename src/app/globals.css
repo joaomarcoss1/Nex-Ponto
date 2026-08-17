@@ -527,6 +527,23 @@ button,
   font-weight: 900;
 }
 
+/* Contraste do cabeçalho Master: evita botão branco sobre fundo branco. */
+main.bg-slate-950 > div > header .btn-safe {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.10);
+  color: #fff;
+}
+
+main.bg-slate-950 > div > header .btn-safe:hover {
+  background: rgba(255, 255, 255, 0.20);
+  color: #fff;
+}
+
+@supports (padding: max(0px)) {
+  .safe-area-bottom { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
+  .safe-area-top { padding-top: max(0.5rem, env(safe-area-inset-top)); }
+}
+
 .premium-step span {
   display: grid;
   height: 1.35rem;

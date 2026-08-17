@@ -1,5 +1,6 @@
 "use client";
 import { publicFetch } from "@/lib/client/public-api";
+import { apiErrorFromPayload } from "@/lib/client/api-error";
 
 import { FileUp, Send } from "lucide-react";
 import { useState } from "react";
@@ -40,7 +41,7 @@ export function JustificationPage() {
         body: formData
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Erro ao enviar justificativa.");
+      if (!response.ok) throw apiErrorFromPayload(payload, response.status, "Erro ao enviar justificativa.");
       setMessage(payload.message);
       setText("");
       setFile(null);

@@ -48,6 +48,10 @@ export async function PUT(request: NextRequest) {
     const rawBody = await readJson<unknown>(request);
     const parsedBody = settingsPayloadSchema.safeParse(rawBody);
     if (!parsedBody.success) return fail(zodErrorMessage(parsedBody.error), 400);
+    const colorKeys = ["primary_color", "secondary_color", "accent_color", "background_color", "surface_color"] as const;
+    if (process.env.NEXT_PUBLIC_ALLOW_TENANT_COLOR_OVERRIDE !== "true" && colorKeys.some((key) => key in parsedBody.data)) {
+      return fail("A paleta institucional azul, branca e dourada está protegida nesta instalação.", 409);
+    }
     const systemPatch: Partial<SystemSettings> = {};
     const brandingPatch: Partial<TenantBranding> = {};
     for (const [key, value] of Object.entries(parsedBody.data) as Array<[keyof SystemSettings, SystemSettings[keyof SystemSettings]]>) {

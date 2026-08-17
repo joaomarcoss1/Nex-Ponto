@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   outputFileTracingRoot: process.cwd(),
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   async headers() {
     return [{
       source: "/(.*)",

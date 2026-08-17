@@ -4,7 +4,6 @@ import { actionLabels } from "@/lib/constants";
 import { readEmployeeSession } from "@/lib/server/employee-session";
 import { fail, ok } from "@/lib/server/http";
 import { requirePublicTenant } from "@/lib/server/public-tenant";
-import { addDaysToDateKey, resolveOperationalTimezone } from "@/lib/time/operational-time";
 import {
   signedHourBankMinutes,
   type HourBankMovementType,
@@ -28,12 +27,11 @@ export async function GET(request: NextRequest) {
     if (employeeError) return fail("Erro ao carregar seu perfil.", 500, employeeError.message);
     if (!employee) return fail("Perfil de funcionário indisponível.", 404);
     const branch = Array.isArray(employee.branches) ? employee.branches[0] : employee.branches;
-    const timezone = resolveOperationalTimezone({
-      branchTimezone: branch?.timezone,
-      tenantTimezone: tenant.defaultTimezone,
-    });
+    const timezone = branch?.timezone || process.env.DEFAULT_TIMEZONE || "America/Sao_Paulo";
     const today = dateKeyInTimezone(new Date(), timezone);
-    const endDateKey = addDaysToDateKey(today, 21);
+    const endDate = new Date(`${today}T12:00:00Z`);
+    endDate.setUTCDate(endDate.getUTCDate() + 21);
+    const endDateKey = endDate.toISOString().slice(0, 10);
 
     const [openSessionRes, todayEntriesRes, occurrencesRes, fallbackSchedulesRes, movementsRes, requestsRes, notificationsRes] = await Promise.all([
       supabase.from("work_sessions").select("id,work_date,status,started_at,ended_at,schedule_snapshot,timezone").eq("employee_id", employee.id).eq("status", "open").order("created_at", { ascending: false }).limit(1).maybeSingle(),

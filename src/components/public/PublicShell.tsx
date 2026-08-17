@@ -21,7 +21,7 @@ export function PublicShell({
   className?: string;
 }) {
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-[var(--background,#f5f7fb)] px-3 pb-32 sm:px-4">
+    <main className="relative min-h-screen overflow-x-hidden bg-[var(--background,#f5f7fb)] px-3 pb-[calc(10rem+env(safe-area-inset-bottom))] sm:px-4">
       <section className="absolute inset-x-0 top-0 h-72 overflow-hidden bg-brand-700">
         <div className="absolute -right-24 -top-28 h-72 w-72 rounded-full bg-brand-500/60" />
         <div className="absolute -bottom-24 left-0 h-48 w-[130%] rounded-[50%] bg-[var(--background,#f5f7fb)]" />

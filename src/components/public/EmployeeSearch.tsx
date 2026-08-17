@@ -1,5 +1,6 @@
 "use client";
 import { publicFetch } from "@/lib/client/public-api";
+import { apiErrorFromPayload } from "@/lib/client/api-error";
 
 import { Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -21,6 +22,7 @@ export function EmployeeSearch({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const cache = useRef(new Map<string, PublicEmployee[]>());
+  const requestSequence = useRef(0);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebounced(query.trim()), 350);
@@ -29,6 +31,7 @@ export function EmployeeSearch({
 
   useEffect(() => {
     const controller = new AbortController();
+    const requestId = ++requestSequence.current;
     const term = debounced;
     setError("");
     if (term.length < 2) {
@@ -46,16 +49,20 @@ export function EmployeeSearch({
     publicFetch(`/api/public/employees?q=${encodeURIComponent(term)}${branchId ? `&branchId=${encodeURIComponent(branchId)}` : ""}`, { signal: controller.signal })
       .then(async (response) => {
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Não foi possível buscar funcionários.");
+        if (!response.ok) throw apiErrorFromPayload(data, response.status, "Não foi possível buscar funcionários.");
+        if (requestSequence.current !== requestId) return;
         const rows = data.employees || [];
         cache.current.set(cacheKey, rows);
         setEmployees(rows);
       })
       .catch((err) => {
-        if (err?.name !== "AbortError") setError(err instanceof Error ? err.message : "Erro ao buscar funcionários.");
+        if (requestSequence.current === requestId && err?.name !== "AbortError") setError(err instanceof Error ? err.message : "Erro ao buscar funcionários.");
       })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
+      .finally(() => { if (requestSequence.current === requestId) setLoading(false); });
+    return () => {
+      controller.abort();
+      if (requestSequence.current === requestId) requestSequence.current += 1;
+    };
   }, [debounced, branchId]);
 
   function clear() {

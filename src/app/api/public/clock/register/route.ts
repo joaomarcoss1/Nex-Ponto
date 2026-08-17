@@ -13,7 +13,7 @@ import {
 } from "@/lib/calculations";
 import { computeEarlyLeaveFromJourney, computeLateFromJourney, fetchScheduleContext, resolveExpectedJourney } from "@/lib/services/schedule-engine";
 import { requirePublicTenant } from "@/lib/server/public-tenant";
-import { fail, ok, readJson } from "@/lib/server/http";
+import { fail, failForRequest, ok, readJson, requestIdFromRequest } from "@/lib/server/http";
 import {
   assertPin,
   getClientIp,
@@ -34,7 +34,6 @@ import {
 } from "@/lib/security/device-identity";
 import { createReceiptToken } from "@/lib/security/receipt-token";
 import { structuredLog } from "@/lib/observability/logger";
-import { resolveOperationalTimezone } from "@/lib/time/operational-time";
 import type { TimeAction, TimeEntryStatus } from "@/types/domain";
 
 const actions: TimeAction[] = ["start_shift", "start_lunch", "end_lunch", "end_shift"];
@@ -209,10 +208,7 @@ export async function POST(request: NextRequest) {
 
     const selectedBranchId = body.branchId || employee.branch_id;
     let branch = oneRelation<BranchRow>(employee.branches as BranchRow | BranchRow[] | null);
-    const defaultTimezone = resolveOperationalTimezone({
-      branchTimezone: branch?.timezone,
-      tenantTimezone: tenant.defaultTimezone,
-    });
+    const defaultTimezone = branch?.timezone || process.env.DEFAULT_TIMEZONE || "America/Sao_Paulo";
     let today = dateKeyInTimezone(new Date(), defaultTimezone);
 
     if (selectedBranchId !== employee.branch_id) {
@@ -241,10 +237,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!branch?.active) return fail("Filial inativa ou não encontrada.", 404);
-    const timezone = resolveOperationalTimezone({
-      branchTimezone: branch.timezone,
-      tenantTimezone: tenant.defaultTimezone,
-    });
+    const timezone = branch.timezone || process.env.DEFAULT_TIMEZONE || "America/Sao_Paulo";
     today = dateKeyInTimezone(new Date(), timezone);
 
     const { data: openSession, error: sessionError } = await supabase
@@ -559,7 +552,7 @@ export async function POST(request: NextRequest) {
 
     const entryRow = Array.isArray(entry) ? entry[0] : entry;
     if (authorizedDevice?.id) {
-      await supabase
+      const { error: deviceUpdateError } = await supabase
         .from("authorized_devices")
         .update({
           employee_id: authorizedDevice.employee_id || employee.id,
@@ -567,13 +560,15 @@ export async function POST(request: NextRequest) {
           last_used_at: new Date().toISOString(),
         })
         .eq("id", authorizedDevice.id);
-      await supabase
+      if (deviceUpdateError) return failForRequest(request, "Ponto registrado, mas a evidência do dispositivo não foi atualizada. Tente consultar o comprovante antes de nova tentativa.", 503, { technicalMessage: deviceUpdateError.message, timeEntryId: entryRow.id });
+      const { error: entryDeviceError } = await supabase
         .from("time_entries")
         .update({ device_id: authorizedDevice.id })
         .eq("id", entryRow.id);
+      if (entryDeviceError) return failForRequest(request, "Ponto registrado, mas o vínculo do dispositivo não foi confirmado. Tente consultar o comprovante antes de nova tentativa.", 503, { technicalMessage: entryDeviceError.message, timeEntryId: entryRow.id });
     }
     if (risk.score > 0) {
-      await supabase.from("clock_risk_events").insert({
+      const { error: riskError } = await supabase.from("clock_risk_events").insert({
         time_entry_id: entryRow.id,
         employee_id: employee.id,
         branch_id: branch.id,
@@ -583,6 +578,7 @@ export async function POST(request: NextRequest) {
         signals: risk.signals,
         evidence,
       });
+      if (riskError) return failForRequest(request, "Ponto registrado, mas a auditoria antifraude não foi concluída. Tente consultar o comprovante antes de nova tentativa.", 503, { technicalMessage: riskError.message, timeEntryId: entryRow.id });
     }
     const { data: regulatoryEntry } = await supabase
       .from("time_entries")
@@ -591,7 +587,7 @@ export async function POST(request: NextRequest) {
       .single();
     const confirmedEntry = regulatoryEntry || entryRow;
     structuredLog("info", "clock_registered", {
-      requestId: request.headers.get("x-request-id"),
+      requestId: requestIdFromRequest(request),
       tenantId: tenant.id,
       branchId: branch.id,
       timeEntryId: confirmedEntry.id,
@@ -619,6 +615,6 @@ export async function POST(request: NextRequest) {
       next: getNextActions(refreshedEntries || [])
     });
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Erro inesperado.", 500);
+    return failForRequest(request, "Não foi possível registrar o ponto agora. Nenhuma confirmação foi emitida; tente novamente.", 503, error instanceof Error ? error.message : error);
   }
 }

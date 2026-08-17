@@ -16,7 +16,7 @@ const reviewSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdmin(request, { any: ["justification.view", "justification.review", "time_entry.review"] });
+  const auth = await requireAdmin(request);
   if ("error" in auth) return auth.error;
   const status = request.nextUrl.searchParams.get("status");
   const branchId = request.nextUrl.searchParams.get("branchId");
@@ -33,11 +33,26 @@ export async function GET(request: NextRequest) {
   const { data, error } = await query;
   if (error) return fail("Erro ao listar justificativas.", 500, error.message);
 
-  return ok({ justifications: data || [] });
+  const withUrls = await Promise.all(
+    (data || []).map(async (item: any) => {
+      if (!item.attachment_path) return item;
+      if (item.attachment_scan_status !== "clean") {
+        return {
+          ...item,
+          signed_attachment_url: null,
+          attachment_blocked_reason: "Anexo aguardando validação de segurança.",
+        };
+      }
+      const { data: signed } = await auth.supabase.storage.from("justificativas").createSignedUrl(item.attachment_path, 60 * 20);
+      return { ...item, signed_attachment_url: signed?.signedUrl || null };
+    })
+  );
+
+  return ok({ justifications: withUrls });
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireAdmin(request, { any: ["justification.review", "time_entry.review"] });
+  const auth = await requireAdmin(request);
   if ("error" in auth) return auth.error;
   const parsed = reviewSchema.safeParse(await readJson<unknown>(request));
   if (!parsed.success) return fail("Informe a decisão e seu efeito financeiro.", 422, parsed.error.flatten());

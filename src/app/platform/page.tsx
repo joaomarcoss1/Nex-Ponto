@@ -13,7 +13,7 @@ import type { CreateTenantResponse } from "@/lib/contracts/tenant-onboarding";
 type Overview = { cards: Record<string, number> };
 type Tenant = { id: string; slug: string; display_name: string; legal_name: string; status: string; onboarding_status: string; created_at: string };
 
-const initialForm = { legalName: "", displayName: "", slug: "", timezone: "America/Fortaleza", planCode: "professional", ownerName: "", ownerEmail: "" };
+const initialForm = { legalName: "", displayName: "", slug: "", timezone: "America/Sao_Paulo", planCode: "professional", ownerName: "", ownerEmail: "" };
 
 export default function PlatformPage() {
   const router = useRouter();
@@ -55,7 +55,7 @@ export default function PlatformPage() {
         headers: { "Idempotency-Key": crypto.randomUUID() },
         body: JSON.stringify(form),
       });
-      setMessage(`Empresa ${result.tenant.displayName} criada. ${result.inviteSent ? "O convite do proprietário foi enviado." : "O proprietário já possuía acesso ao Auth."}`);
+      setMessage(`Empresa ${result.tenant.displayName} criada. ${result.inviteSent ? "O acesso do proprietário foi enviado." : "O cadastro ficou pendente de reenvio do acesso."}`);
       setForm(initialForm); setShowForm(false); await load();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Erro ao criar empresa."); }
     finally { setLoading(false); }

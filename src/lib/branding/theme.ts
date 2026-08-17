@@ -40,15 +40,16 @@ export function accessibleForeground(background: string) {
 }
 
 export function brandingCssVariables(branding: BrandingTheme): Record<string, string> {
-  const primary = safeHex(branding.primary_color, DEFAULT_PRIMARY);
-  const secondary = safeHex(branding.secondary_color, DEFAULT_SECONDARY);
+  const allowTenantColors = process.env.NEXT_PUBLIC_ALLOW_TENANT_COLOR_OVERRIDE === "true";
+  const primary = allowTenantColors ? safeHex(branding.primary_color, DEFAULT_PRIMARY) : DEFAULT_PRIMARY;
+  const secondary = allowTenantColors ? safeHex(branding.secondary_color, DEFAULT_SECONDARY) : DEFAULT_SECONDARY;
   const variables: Record<string, string> = {
     "--brand": primary,
     "--brand-foreground": accessibleForeground(primary),
     "--brand-dark": `rgb(${mix(primary, [0, 0, 0], 0.58)})`,
     "--sun": secondary,
-    "--background": safeHex(branding.background_color, "#F5F7FB"),
-    "--surface": safeHex(branding.surface_color, "#FFFFFF"),
+    "--background": allowTenantColors ? safeHex(branding.background_color, "#F5F7FB") : "#F5F7FB",
+    "--surface": allowTenantColors ? safeHex(branding.surface_color, "#FFFFFF") : "#FFFFFF",
     "--success": "#16803C",
     "--warning": "#B45309",
     "--danger": "#B91C1C",
@@ -78,7 +79,6 @@ export function brandingCssVariables(branding: BrandingTheme): Record<string, st
   ] as const;
   for (const [shade, value] of shades) variables[`--color-brand-${shade}`] = value;
   for (const [shade, value] of accentShades) variables[`--color-accent-${shade}`] = value;
-  if (branding.accent_color) variables["--accent"] = safeHex(branding.accent_color, "#22A5F5");
+  variables["--accent"] = allowTenantColors ? safeHex(branding.accent_color, "#22A5F5") : "#22A5F5";
   return variables;
 }
-

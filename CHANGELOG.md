@@ -1,5 +1,30 @@
 # Changelog
 
+## 5.4.0 — 2026-08-07
+
+### Estrutura, segurança e estabilidade
+
+- ambiente e URL oficial centralizados, readiness separado de liveness;
+- erros padronizados e mensagens técnicas restritas aos logs;
+- convite disparado somente após tenant/proprietário/onboarding transacionais;
+- estado persistente de convite, reenvio recuperável e compensação segura;
+- normalização compatível de `tenant_features` e hardening de RLS/grants/Storage;
+- MFA mantido como recurso opcional conforme política atual;
+- filial e funcionamento salvos em uma única transação PostgreSQL;
+- rate limit adicional nos acessos públicos e limite de funcionários do plano;
+- identidade institucional bloqueada em azul/branco/dourado por padrão.
+
+### Mobile, qualidade e operação
+
+- drawer com safe area e restauração correta do overflow;
+- componentes responsivos para toolbar, forms, tabs, cards e modal;
+- fallback de mapa sem iframe quebrado;
+- Error Boundaries separados para Admin e Master;
+- scripts de auditoria do banco, código morto, carga do caminho público e gate de integração;
+- migrations incrementais 053 e 054, sem alteração das 52 migrations históricas.
+- overrides de segurança atualizados para `brace-expansion` 5.0.9 e PostCSS 8.5.23 após advisories de agosto/2026.
+- script `npm start` restaurado para execução do build de produção.
+
 ## 5.3.0 — 2026-07-29
 
 ### Segurança, ponto e plataforma
@@ -60,11 +85,3 @@
 - testes financeiros dourados e testes de contratos/segurança;
 - Playwright e suíte de integração preparados;
 - CI ampliado.
-# 5.3.1-remediated
-
-- Added migration `053_nexponto_v53_final_production_remediation.sql` with private Storage buckets, per-operation Storage policies, v53 RLS helpers, attachment quarantine states, job metadata and direct-write revokes for critical tables.
-- Added dedicated signed URL route for justification attachments with tenant, branch, permission, scan-status and canonical path checks.
-- Added centralized operational timezone service and tests for Brazilian timezone boundaries.
-- Split public health from protected internal readiness/liveness checks.
-- Reworked RLS/Storage integration tests so production gates fail when real Supabase fixtures are missing.
-- Added attachment scan worker flow, load-test script for real clock registration and operational documentation requested for controlled pilot readiness.

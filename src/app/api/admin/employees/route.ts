@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/server/auth";
 import { writeAuditLog } from "@/lib/server/audit";
 import { fail, ok, readJson } from "@/lib/server/http";
 import { hashPin } from "@/lib/server/pin";
+import { enforceTenantLimit } from "@/lib/server/tenant-limits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -163,6 +164,13 @@ async function saveEmployee(request: NextRequest, mode: "create" | "update") {
   if (!canAccessBranch(auth.context, input.branch_id)) return fail("Você não tem acesso a esta filial.", 403);
   const scheduleError = validateSchedule(input);
   if (scheduleError) return fail(scheduleError, 422);
+  if (mode === "create") {
+    try {
+      await enforceTenantLimit({ supabase: auth.supabase, tenantId: auth.context.tenantId, limit: "employee_limit", currentTable: "employees" });
+    } catch (cause) {
+      return fail(cause instanceof Error ? cause.message : "Limite de funcionários atingido.", 409);
+    }
+  }
 
   const financialAllowed = canViewFinancialData(auth.context);
   if (mode === "update" && input.id) {

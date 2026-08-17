@@ -205,8 +205,8 @@ export async function fetchScheduleContext(params: {
   const publishedRules: WorkScheduleRule[] = ((occurrences || []) as Array<Record<string, unknown>>).map((row) => {
     const branchRelation = Array.isArray(row.branches) ? row.branches[0] : row.branches;
     const timezone = branchRelation && typeof branchRelation === "object" && "timezone" in branchRelation
-      ? String((branchRelation as { timezone?: string }).timezone || process.env.DEFAULT_TIMEZONE || "America/Fortaleza")
-      : process.env.DEFAULT_TIMEZONE || "America/Fortaleza";
+      ? String((branchRelation as { timezone?: string }).timezone || process.env.DEFAULT_TIMEZONE || "America/Sao_Paulo")
+      : process.env.DEFAULT_TIMEZONE || "America/Sao_Paulo";
     const intervals = Array.isArray(row.intervals) ? row.intervals as Array<{ expected_minutes?: number; paid?: boolean; planned_start?: string | null }> : [];
     const unpaidMinutes = intervals.filter((item) => !item.paid).reduce((sum, item) => sum + Number(item.expected_minutes ?? 0), 0);
     const startTimestamp = row.starts_at ? String(row.starts_at) : "";

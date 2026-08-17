@@ -3,6 +3,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type RateLimitResult = { allowed: boolean; remaining: number; retryAfterSeconds: number };
 
+export class RateLimitConfigurationError extends Error {
+  constructor() {
+    super("RATE_LIMIT_CONFIGURATION_UNAVAILABLE");
+    this.name = "RateLimitConfigurationError";
+  }
+}
+
 function normalizeKeyPart(value: string | null | undefined) {
   return String(value || "unknown").trim().toLowerCase().slice(0, 180);
 }
@@ -10,7 +17,7 @@ function normalizeKeyPart(value: string | null | undefined) {
 export function privacyHash(value: string) {
   const salt = process.env.RATE_LIMIT_HASH_SALT || process.env.TENANT_CONTEXT_SECRET;
   if (!salt || salt.length < 32) {
-    throw new Error("RATE_LIMIT_HASH_SALT ou TENANT_CONTEXT_SECRET deve possuir ao menos 32 caracteres.");
+    throw new RateLimitConfigurationError();
   }
   return createHash("sha256").update(`${salt}:${value}`).digest("hex");
 }

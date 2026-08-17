@@ -25,6 +25,14 @@ export type CreateTenantResponse = {
     email: string;
   };
   inviteSent: boolean;
+  states: Array<
+    | "tenant_created"
+    | "invite_sent"
+    | "existing_user_linked"
+    | "pending_invite"
+    | "onboarding_created"
+    | "partial_failure"
+    | "rollback_completed"
+  >;
   duplicated?: boolean;
 };
-

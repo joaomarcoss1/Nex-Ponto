@@ -4,6 +4,7 @@ import {
   getBrowserAdminSession,
   getBrowserSupabaseConfigStatus,
 } from "@/lib/client/supabase";
+import { apiErrorFromPayload } from "@/lib/client/api-error";
 
 type CacheEntry = {
   expiresAt: number;
@@ -118,11 +119,7 @@ export async function adminFetch<T>(
         ? await response.json()
         : await response.text();
       if (!response.ok) {
-        const message =
-          typeof data === "object" && data && "error" in data
-            ? String(data.error)
-            : "Erro na operação administrativa.";
-        throw new Error(message);
+        throw apiErrorFromPayload(data, response.status, "Não foi possível concluir a operação administrativa.");
       }
 
       if (cacheable) {
@@ -192,7 +189,7 @@ export async function downloadAdminFile(path: string, filename: string) {
     const contentType = response.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const payload = await response.json().catch(() => null);
-      throw new Error(payload?.error || "Não foi possível gerar o arquivo.");
+      throw apiErrorFromPayload(payload, response.status, "Não foi possível gerar o arquivo.");
     }
     const text = await response.text().catch(() => "");
     throw new Error(text || "Não foi possível gerar o arquivo.");
@@ -238,7 +235,7 @@ export async function downloadAdminPostFile(
     const contentType = response.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const payload = await response.json().catch(() => null);
-      throw new Error(payload?.error || "Não foi possível gerar o arquivo.");
+      throw apiErrorFromPayload(payload, response.status, "Não foi possível gerar o arquivo.");
     }
     throw new Error(
       (await response.text().catch(() => "")) ||

@@ -84,6 +84,6 @@ export async function GET(request: NextRequest) {
 
     return ok({ employees });
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Erro inesperado.", 500);
+    return fail("A busca está temporariamente indisponível. Tente novamente.", 503, error instanceof Error ? error.message : error);
   }
 }

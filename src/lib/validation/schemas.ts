@@ -105,6 +105,8 @@ export const settingsPayloadSchema = z.object({
   google_maps_enabled: z.boolean().optional(),
   block_clock_without_confirmed_branch_gps: z.boolean().optional(),
   require_qr_for_clock: z.boolean().optional(),
+  authorized_device_mode: z.enum(["free", "monitored", "required"]).optional(),
+  outside_operating_hours_policy: z.enum(["allow", "justify", "block"]).optional(),
   block_poor_gps_accuracy: z.boolean().optional(),
   payroll_block_critical_pending: z.boolean().optional(),
   lunch_tolerance_minutes: z.coerce.number().int().min(0).max(240).optional(),

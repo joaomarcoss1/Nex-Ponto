@@ -1,7 +1,6 @@
 import type { TimeAction, TimeEntryStatus } from "@/types/domain";
-import { configuredFallbackTimezone } from "@/lib/time/operational-time";
 
-export const TIMEZONE = configuredFallbackTimezone();
+export const TIMEZONE = process.env.DEFAULT_TIMEZONE || "America/Sao_Paulo";
 
 export const actionLabels: Record<TimeAction, string> = {
   start_shift: "Iniciar expediente",
@@ -47,6 +46,8 @@ export const defaultSettings = {
   block_poor_gps_accuracy: false,
   block_clock_without_confirmed_branch_gps: true,
   require_qr_for_clock: false,
+  authorized_device_mode: "monitored",
+  outside_operating_hours_policy: "justify",
   lunch_tolerance_minutes: 10,
   allow_different_branch_with_authorization: true,
   google_maps_enabled: true,

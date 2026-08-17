@@ -12,12 +12,12 @@ export async function requirePublicTenant(request: NextRequest) {
   if (!tenant) {
     const { data: tenants, error } = await rawSupabase
       .from("tenants")
-      .select("id,slug,display_name,default_timezone,status")
+      .select("id,slug,display_name,status")
       .in("status", ["trial", "active"])
       .limit(2);
     if (!error && tenants?.length === 1) {
       const only = tenants[0];
-      tenant = { id: only.id, slug: only.slug, displayName: only.display_name, defaultTimezone: only.default_timezone, status: only.status };
+      tenant = { id: only.id, slug: only.slug, displayName: only.display_name, status: only.status };
     }
   }
 
