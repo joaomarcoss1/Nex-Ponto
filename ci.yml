@@ -1,0 +1,94 @@
+name: NexPonto v5.5.6 quality gate
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      SUPABASE_URL: https://example.supabase.co
+      SUPABASE_ANON_KEY: ci-anon-placeholder-at-least-32-characters
+      NEXT_PUBLIC_SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ""
+      SUPABASE_SERVICE_ROLE_KEY: sb_secret_ci_service_role_placeholder_1234567890
+      TENANT_CONTEXT_SECRET: ci-tenant-context-secret-at-least-32-characters
+      EMPLOYEE_SESSION_SECRET: ci-employee-session-secret-at-least-32-characters
+      AUDIT_HASH_SALT: ci-audit-hash-salt-at-least-32-characters
+      RATE_LIMIT_HASH_SALT: ci-rate-limit-hash-salt-at-least-32-characters
+      INTERNAL_JOBS_SECRET: ci-internal-jobs-secret-at-least-32-characters
+      DEVICE_IDENTITY_SECRET: ci-device-identity-secret-at-least-32-characters
+      RECEIPT_TOKEN_SECRET: ci-receipt-token-secret-at-least-32-characters
+      NEXT_PUBLIC_APP_URL: https://ci.nexponto.example
+      APP_URL: https://ci.nexponto.example
+      FEATURE_OFFICIAL_PAYROLL: "false"
+      FEATURE_PRE_PAYROLL: "true"
+      ATTACHMENT_SCANNER_ENABLED: "false"
+      TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+      TEST_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+      TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+      TEST_TENANT_A_EMAIL: ${{ secrets.TEST_TENANT_A_EMAIL }}
+      TEST_TENANT_A_PASSWORD: ${{ secrets.TEST_TENANT_A_PASSWORD }}
+      TEST_TENANT_A_ID: ${{ secrets.TEST_TENANT_A_ID }}
+      TEST_TENANT_A_EMPLOYEE_ID: ${{ secrets.TEST_TENANT_A_EMPLOYEE_ID }}
+      TEST_TENANT_B_ID: ${{ secrets.TEST_TENANT_B_ID }}
+      TEST_TENANT_B_BRANCH_ID: ${{ secrets.TEST_TENANT_B_BRANCH_ID }}
+      TEST_TENANT_B_EMPLOYEE_ID: ${{ secrets.TEST_TENANT_B_EMPLOYEE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run security:data
+      - run: npm run security:rbac
+      - run: npm run ux:audit
+      - run: npm run migrations:check
+      - run: npm run structure:check
+      - run: npm run structure:v51
+      - run: npm run structure:v53
+      - run: npm run structure:v54
+      - run: npm run structure:v55
+      - run: npm run structure:v56
+      - run: npm run validate:env
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run test:integration:required
+      - run: npm run audit
+      - run: npm run build
+
+  e2e-smoke:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: https://example.supabase.co
+      SUPABASE_ANON_KEY: ci-anon-placeholder-at-least-32-characters
+      NEXT_PUBLIC_SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ""
+      SUPABASE_SERVICE_ROLE_KEY: sb_secret_ci_service_role_placeholder_1234567890
+      TENANT_CONTEXT_SECRET: ci-tenant-context-secret-at-least-32-characters
+      EMPLOYEE_SESSION_SECRET: ci-employee-session-secret-at-least-32-characters
+      AUDIT_HASH_SALT: ci-audit-hash-salt-at-least-32-characters
+      RATE_LIMIT_HASH_SALT: ci-rate-limit-hash-salt-at-least-32-characters
+      INTERNAL_JOBS_SECRET: ci-internal-jobs-secret-at-least-32-characters
+      DEVICE_IDENTITY_SECRET: ci-device-identity-secret-at-least-32-characters
+      RECEIPT_TOKEN_SECRET: ci-receipt-token-secret-at-least-32-characters
+      NEXT_PUBLIC_APP_URL: https://ci.nexponto.example
+      APP_URL: https://ci.nexponto.example
+      FEATURE_OFFICIAL_PAYROLL: "false"
+      FEATURE_PRE_PAYROLL: "true"
+      ATTACHMENT_SCANNER_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

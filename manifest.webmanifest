@@ -1,0 +1,20 @@
+{
+  "name": "NexPonto",
+  "short_name": "NexPonto",
+  "description": "Jornadas, escalas e gestão de pessoas.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F5F7FB",
+  "theme_color": "#0A1F4D",
+  "orientation": "any",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/nexponto-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

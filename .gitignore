@@ -1,0 +1,16 @@
+node_modules
+.corepack-cache
+.npm-cache
+.npm-project-cache
+.npm-runtime-cache
+.next
+out
+dist
+.env
+.env.local
+.vercel
+*.log
+*.tsbuildinfo
+coverage
+playwright-report
+test-results
