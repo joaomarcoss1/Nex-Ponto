@@ -1,6 +1,10 @@
 {
   "name": "nexponto",
+<<<<<<< HEAD
   "version": "5.5.8",
+=======
+  "version": "5.5.6",
+>>>>>>> 2975acc099004b59e09f5b0f424e5739cdff40b3
   "private": true,
   "packageManager": "npm@10.9.2",
   "engines": {
@@ -35,16 +39,24 @@
     "security:data": "node scripts/test-sensitive-data-scanner.mjs && node scripts/check-sensitive-data.mjs",
     "security:rbac": "node scripts/audit-admin-write-rbac.mjs",
     "ux:audit": "node scripts/audit-ui-interactions.mjs",
+<<<<<<< HEAD
     "verify": "npm run doctor && npm run security:data && npm run security:rbac && npm run ux:audit && npm run migrations:check && npm run structure:check && npm run structure:v51 && npm run structure:v53 && npm run structure:v54 && npm run structure:v55 && npm run structure:v56 && npm run structure:v57 && npm run structure:v58 && npm run audit:dead-code && npm run lint && npm run typecheck && npm run test && npm run build",
     "verify:production": "npm run validate:env && npm run doctor && npm run security:data && npm run security:rbac && npm run ux:audit && npm run migrations:check && npm run structure:check && npm run structure:v51 && npm run structure:v53 && npm run structure:v54 && npm run structure:v55 && npm run structure:v56 && npm run structure:v57 && npm run structure:v58 && npm run lint && npm run typecheck && npm run test && npm run test:integration:required && npm run build && npm run audit && npm run audit:database",
+=======
+    "verify": "npm run doctor && npm run security:data && npm run security:rbac && npm run ux:audit && npm run migrations:check && npm run structure:check && npm run structure:v51 && npm run structure:v53 && npm run structure:v54 && npm run structure:v55 && npm run structure:v56 && npm run audit:dead-code && npm run lint && npm run typecheck && npm run test && npm run build",
+    "verify:production": "npm run validate:env && npm run doctor && npm run security:data && npm run security:rbac && npm run ux:audit && npm run migrations:check && npm run structure:check && npm run structure:v51 && npm run structure:v53 && npm run structure:v54 && npm run structure:v55 && npm run structure:v56 && npm run lint && npm run typecheck && npm run test && npm run test:integration:required && npm run build && npm run audit && npm run audit:database",
+>>>>>>> 2975acc099004b59e09f5b0f424e5739cdff40b3
     "structure:check": "node scripts/verify-v4-structure.mjs",
     "structure:v51": "node scripts/verify-v51-remediation.mjs",
     "structure:v53": "node scripts/verify-v53-production.mjs",
     "structure:v54": "node scripts/verify-v54-remediation.mjs",
     "structure:v55": "node scripts/verify-v55-production.mjs",
     "structure:v56": "node scripts/verify-v56-production.mjs",
+<<<<<<< HEAD
     "structure:v57": "node scripts/verify-v57-production.mjs",
     "structure:v58": "node scripts/verify-v58-production.mjs",
+=======
+>>>>>>> 2975acc099004b59e09f5b0f424e5739cdff40b3
     "test:critical": "vitest run src/lib/services/__tests__/hour-bank-v51.test.ts src/lib/services/__tests__/historical-journey-v51.test.ts src/lib/services/__tests__/session-attendance-v51.test.ts src/lib/services/__tests__/schedule-v51.test.ts src/lib/services/__tests__/professional-payroll-v51.test.ts --configLoader runner"
   },
   "dependencies": {
@@ -55,12 +67,20 @@
     "date-fns": "4.1.0",
     "exceljs": "4.1.1",
     "lucide-react": "0.468.0",
+<<<<<<< HEAD
     "next": "15.5.25",
+=======
+    "next": "15.5.21",
+>>>>>>> 2975acc099004b59e09f5b0f424e5739cdff40b3
     "pdfkit": "^0.19.1",
     "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+<<<<<<< HEAD
     "sharp": "0.35.4",
+=======
+    "sharp": "0.35.0",
+>>>>>>> 2975acc099004b59e09f5b0f424e5739cdff40b3
     "zod": "3.25.76"
   },
   "devDependencies": {
@@ -72,7 +92,11 @@
     "@playwright/test": "1.62.0",
     "autoprefixer": "10.4.21",
     "eslint": "9.32.0",
+<<<<<<< HEAD
     "eslint-config-next": "15.5.25",
+=======
+    "eslint-config-next": "15.5.21",
+>>>>>>> 2975acc099004b59e09f5b0f424e5739cdff40b3
     "postcss": "8.5.23",
     "tailwindcss": "3.4.17",
     "typescript": "5.9.2",
@@ -81,7 +105,11 @@
   "overrides": {
     "brace-expansion": "5.0.9",
     "js-yaml": "4.3.1",
+<<<<<<< HEAD
     "sharp": "0.35.4",
+=======
+    "sharp": "0.35.0",
+>>>>>>> 2975acc099004b59e09f5b0f424e5739cdff40b3
     "uuid": "11.1.1",
     "postcss": "$postcss"
   }

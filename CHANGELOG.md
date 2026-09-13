@@ -1,5 +1,6 @@
 # Changelog
 
+<<<<<<< HEAD
 ## 5.5.8 — 2026-09-09
 
 - primeira troca de senha movida de metadata editável pelo cliente para `app_metadata`, com endpoint autenticado, rate limit e limpeza compatível do legado;
@@ -33,6 +34,8 @@
 - runtime e validações de ambiente endurecidos para produção;
 - migration 058 e checks estruturais v5.5.5.
 
+=======
+>>>>>>> 2975acc099004b59e09f5b0f424e5739cdff40b3
 ## 5.5.4 — 2026-08-19
 
 - PIN em massa validado por contrato e persistido em RPC transacional antes de ser apresentado;

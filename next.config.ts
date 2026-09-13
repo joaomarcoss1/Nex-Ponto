@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   outputFileTracingRoot: process.cwd(),
   allowedDevOrigins: ["127.0.0.1", "localhost"],
+<<<<<<< HEAD
   webpack(config) {
     if (process.env.NEXT_DISABLE_WEBPACK_CACHE === "1") config.cache = false;
     return config;
@@ -22,6 +23,8 @@ const nextConfig: NextConfig = {
     parallelServerBuildTraces: false,
     webpackMemoryOptimizations: true,
   } : undefined,
+=======
+>>>>>>> 2975acc099004b59e09f5b0f424e5739cdff40b3
   async headers() {
     return [{
       source: "/(.*)",

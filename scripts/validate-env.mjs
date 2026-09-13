@@ -21,11 +21,19 @@ const secretNames = [
 const capabilities = {
   build: {
     aliases: [["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"], ["SUPABASE_ANON_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY"]],
+<<<<<<< HEAD
     required: ["SUPABASE_SERVICE_ROLE_KEY", "TENANT_CONTEXT_SECRET", "RATE_LIMIT_HASH_SALT", "AUDIT_HASH_SALT", "DEFAULT_TIMEZONE"],
   },
   production: {
     aliases: [["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"], ["SUPABASE_ANON_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY"]],
     required: ["SUPABASE_SERVICE_ROLE_KEY", "TENANT_CONTEXT_SECRET", "RATE_LIMIT_HASH_SALT", "AUDIT_HASH_SALT", "DEFAULT_TIMEZONE"],
+=======
+    required: ["SUPABASE_SERVICE_ROLE_KEY", "TENANT_CONTEXT_SECRET", "RATE_LIMIT_HASH_SALT", "AUDIT_HASH_SALT"],
+  },
+  production: {
+    aliases: [["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"], ["SUPABASE_ANON_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY"]],
+    required: ["SUPABASE_SERVICE_ROLE_KEY", "TENANT_CONTEXT_SECRET", "RATE_LIMIT_HASH_SALT", "AUDIT_HASH_SALT"],
+>>>>>>> 2975acc099004b59e09f5b0f424e5739cdff40b3
   },
   full: {
     aliases: [["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"], ["SUPABASE_ANON_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY"]],
@@ -38,12 +46,19 @@ const capabilities = {
       "DEVICE_IDENTITY_SECRET",
       "RECEIPT_TOKEN_SECRET",
       "INTERNAL_JOBS_SECRET",
+<<<<<<< HEAD
       "DEFAULT_TIMEZONE",
+=======
+>>>>>>> 2975acc099004b59e09f5b0f424e5739cdff40b3
     ],
   },
   local: {
     aliases: [["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"], ["SUPABASE_ANON_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY"]],
+<<<<<<< HEAD
     required: ["SUPABASE_SERVICE_ROLE_KEY", "TENANT_CONTEXT_SECRET", "RATE_LIMIT_HASH_SALT", "AUDIT_HASH_SALT", "DEFAULT_TIMEZONE"],
+=======
+    required: ["SUPABASE_SERVICE_ROLE_KEY", "TENANT_CONTEXT_SECRET", "RATE_LIMIT_HASH_SALT", "AUDIT_HASH_SALT"],
+>>>>>>> 2975acc099004b59e09f5b0f424e5739cdff40b3
   },
 };
 
@@ -110,6 +125,7 @@ for (const name of selected.required) {
   else if (secretNames.includes(name) && value.length < 32) failures.push(`${name}: deve ter ao menos 32 caracteres`);
 }
 
+<<<<<<< HEAD
 const timezone = process.env.DEFAULT_TIMEZONE?.trim() || "";
 if (timezone) {
   try {
@@ -119,6 +135,8 @@ if (timezone) {
   }
 }
 
+=======
+>>>>>>> 2975acc099004b59e09f5b0f424e5739cdff40b3
 const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
 if (serviceRole && !validServiceRole(serviceRole)) {
   failures.push("SUPABASE_SERVICE_ROLE_KEY: a chave não possui formato service_role válido");
