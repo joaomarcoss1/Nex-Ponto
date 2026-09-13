@@ -1,0 +1,12 @@
+.git
+.github
+.next
+node_modules
+artifacts
+docs
+tests
+supabase
+*.log
+.env
+.env.*
+!.env.example
