@@ -1,11 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
-<<<<<<< HEAD
-    { "path": "/api/internal/jobs/holidays", "schedule": "15 3 * * *" },
-    { "path": "/api/internal/jobs/process", "schedule": "*/5 * * * *" }
-=======
-    { "path": "/api/internal/jobs/holidays", "schedule": "15 3 * * *" }
->>>>>>> 2975acc099004b59e09f5b0f424e5739cdff40b3
+    {
+      "path": "/api/internal/jobs/holidays",
+      "schedule": "15 3 * * *"
+    },
+    {
+      "path": "/api/internal/jobs/process",
+      "schedule": "*/5 * * * *"
+    }
   ]
 }
