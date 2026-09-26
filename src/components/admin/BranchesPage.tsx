@@ -97,13 +97,19 @@ export function BranchesPage() {
   }
 
   async function save() {
+    const latitude = form.latitude === "" || form.latitude === null || form.latitude === undefined ? NaN : Number(form.latitude);
+    const longitude = form.longitude === "" || form.longitude === null || form.longitude === undefined ? NaN : Number(form.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || (latitude === 0 && longitude === 0)) {
+      setError("Marque a localização da unidade no mapa, use \"Usar minha localização\" ou digite latitude/longitude antes de salvar.");
+      return;
+    }
     try {
       setLoading(true);
       setError("");
       const payload = {
         ...form,
-        latitude: Number(form.latitude),
-        longitude: Number(form.longitude),
+        latitude,
+        longitude,
         allowed_radius_meters: form.allowed_radius_meters === "" || form.allowed_radius_meters === null || form.allowed_radius_meters === undefined ? 250 : Number(form.allowed_radius_meters),
         id: editing?.id
       };

@@ -4,7 +4,29 @@ export type ApiErrorPayload = {
   code?: string;
   correlationId?: string;
   requestId?: string;
+  fields?: Record<string, string[]>;
 };
+
+const FIELD_LABELS: Record<string, string> = {
+  latitude: "Latitude",
+  longitude: "Longitude",
+  address: "Endereço",
+  name: "Nome",
+  branch_id: "Filial",
+  full_name: "Nome completo",
+  role: "Cargo",
+  admission_date: "Data de admissão",
+  allowed_radius_meters: "Raio permitido",
+  pin: "PIN",
+};
+
+function describeFields(fields: Record<string, string[]> | undefined) {
+  if (!fields) return "";
+  const parts = Object.entries(fields)
+    .filter(([, messages]) => messages?.length)
+    .map(([field, messages]) => `${FIELD_LABELS[field] || field}: ${messages[0]}`);
+  return parts.join("; ");
+}
 
 export class ApiClientError extends Error {
   constructor(
@@ -37,8 +59,11 @@ export function apiErrorFromPayload(payload: unknown, status?: number, fallback 
   const nested = data.error && typeof data.error === "object" ? data.error : undefined;
   const legacy = typeof data.error === "string" ? data.error : undefined;
   const requestId = nested?.requestId || data.requestId || data.correlationId;
+  const baseMessage = safeClientMessage(nested?.message || legacy || data.message, requestId, fallback);
+  const fieldDetail = describeFields(data.fields);
+  const message = fieldDetail ? `${baseMessage} (${fieldDetail})` : baseMessage;
   return new ApiClientError(
-    safeClientMessage(nested?.message || legacy || data.message, requestId, fallback),
+    message,
     nested?.code || data.code || "UNKNOWN_ERROR",
     requestId,
     Boolean(nested?.retryable),

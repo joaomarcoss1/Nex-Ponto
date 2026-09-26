@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fail, sanitizePublicErrorMessage } from "@/lib/server/http";
 
 describe("server error sanitization", () => {
@@ -25,5 +25,22 @@ describe("server error sanitization", () => {
     expect(body.message).toBe(body.error.message);
     expect(body.requestId).toBe(body.error.requestId);
     expect(body.details).toEqual({ redacted: true });
+  });
+
+  it("always exposes field-level validation errors, even in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      const response = fail("Revise os dados da filial.", 400, {
+        formErrors: [],
+        fieldErrors: { latitude: ["Number must be greater than or equal to -90"], branch_id: ["Required"] },
+      });
+      const body = await response.json();
+      expect(body.fields).toEqual({
+        latitude: ["Number must be greater than or equal to -90"],
+        branch_id: ["Required"],
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

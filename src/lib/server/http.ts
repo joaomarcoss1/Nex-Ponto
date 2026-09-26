@@ -75,6 +75,13 @@ export function fail(message: string, status = 400, details?: unknown) {
     message: publicMessage,
   };
   const safeDetails = sanitizeDetails(details);
+  if (safeDetails !== undefined && safeDetails !== null && typeof safeDetails === "object" && "fieldErrors" in safeDetails) {
+    // Zod's flatten() shape: field names + validation messages about the caller's own
+    // submission. Never contains secrets (sanitizeDetails already redacted those), so it is
+    // always safe to send back — this is what lets the admin UI say *which* field is wrong
+    // instead of a dead-end "revise the data" message in production.
+    payload.fields = (safeDetails as { fieldErrors: Record<string, string[]> }).fieldErrors;
+  }
   if (process.env.NODE_ENV !== "production" && safeDetails !== undefined) payload.details = safeDetails;
   if (status >= 500) structuredLog("error", "api_request_failed", { requestId, code, status, details });
   return NextResponse.json(payload, { status });

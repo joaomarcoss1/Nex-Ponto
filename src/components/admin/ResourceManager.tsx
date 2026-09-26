@@ -335,7 +335,7 @@ export function ResourceManager({
                 const fieldOptions = field.options || options[field.name] || [];
                 return (
                   <Field key={field.name} label={field.label}>
-                    <Select value={String(value ?? "")} onChange={(event) => setValue(field.name, event.target.value)}>
+                    <Select required={field.required} value={String(value ?? "")} onChange={(event) => setValue(field.name, event.target.value)}>
                       <option value="">Selecione</option>
                       {fieldOptions.map((option) => (
                         <option key={String(option.value)} value={String(option.value)}>

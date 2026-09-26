@@ -39,6 +39,7 @@ const baseFields = [
     name: "branch_id",
     label: "Filial vinculada",
     type: "select" as const,
+    required: true,
     optionsEndpoint: "/api/admin/branches?status=active",
     optionsKey: "branches",
     optionLabel: "name",

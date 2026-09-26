@@ -30,4 +30,13 @@ describe("API error contract", () => {
     expect(error.message).toBe("Serviço temporariamente indisponível. Informe o requestId req-safe ao suporte.");
     expect(error.message).not.toMatch(/RATE_LIMIT_HASH_SALT|TENANT_CONTEXT_SECRET/);
   });
+
+  it("names the invalid field instead of a dead-end message", () => {
+    const error = apiErrorFromPayload({
+      error: { code: "VALIDATION_FAILED", message: "Revise os dados da filial.", requestId: "req-2" },
+      fields: { branch_id: ["Required"] },
+    }, 400);
+
+    expect(error.message).toBe("Revise os dados da filial. (Filial: Required)");
+  });
 });
