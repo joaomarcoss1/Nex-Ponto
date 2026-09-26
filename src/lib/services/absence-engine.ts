@@ -35,16 +35,32 @@ export function buildAbsenceReport(params: {
   const dates = eachDateInclusive(startDate, endDate);
   const rows: AbsenceReportRow[] = [];
 
+  // Grouping once by "employee|date" avoids re-scanning the whole period's entries/justifications
+  // for every employee/day pair (O(employees*days*entries) with real data — the same class of
+  // slowdown fixed in the dashboard endpoint). Map lookups below are O(1) instead.
+  const entriesByEmployeeDate = new Map<string, TimeEntry[]>();
+  for (const entry of entries) {
+    const key = `${entry.employee_id}|${entry.entry_date}`;
+    const existing = entriesByEmployeeDate.get(key);
+    if (existing) existing.push(entry);
+    else entriesByEmployeeDate.set(key, [entry]);
+  }
+  // .find() keeps the first match on duplicates; only set a key once to preserve that.
+  const justificationByEmployeeDate = new Map<string, any>();
+  for (const item of justifications) {
+    const key = `${item.employee_id}|${item.absence_date}`;
+    if (!justificationByEmployeeDate.has(key)) justificationByEmployeeDate.set(key, item);
+  }
+
   for (const employee of employees) {
-    const employeeEntries = entries.filter((entry) => entry.employee_id === employee.id);
     const expectedDays = dates.filter((date) => resolveExpectedJourney({ employee, dateKey: date, schedules, holidays }).expected).length;
     const dailyRate = resolveDailyRate(employee, expectedDays, settings.daily_rate_calculation);
 
     for (const date of dates) {
       const journey = resolveExpectedJourney({ employee, dateKey: date, schedules, holidays });
-      const dayEntries = employeeEntries.filter((entry) => entry.entry_date === date);
+      const dayEntries = entriesByEmployeeDate.get(`${employee.id}|${date}`) || [];
       const hasStart = dayEntries.some((entry) => entry.action === "start_shift" && ["valid", "pending_review", "adjusted"].includes(entry.status));
-      const justification = justifications.find((item) => item.employee_id === employee.id && item.absence_date === date);
+      const justification = justificationByEmployeeDate.get(`${employee.id}|${date}`);
       let absenceStatus: AbsenceReportRow["absence_status"] = "not_absent";
       if (journey.expected && !hasStart) {
         absenceStatus = justification?.status || "without_justification";

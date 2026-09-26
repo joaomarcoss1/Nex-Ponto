@@ -38,6 +38,21 @@ function overlap(startA: string, endA: string | null, startB: string, endB: stri
   return startA <= endB && (endA || "9999-12-31") >= startB;
 }
 
+// Groups a tenant-wide array once (O(rows)) so the per-employee loop further down can look up
+// each employee's own slice in O(1) instead of re-filtering the whole array — with hundreds of
+// employees and thousands of rows per payroll period (salary history, sessions, time entries,
+// overtime, hour bank, planned days, absences), the repeated full-array filter was the single
+// heaviest cost in generating a payroll run.
+function groupByEmployeeId<T extends { employee_id: string }>(rows: T[]) {
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const list = groups.get(row.employee_id);
+    if (list) list.push(row);
+    else groups.set(row.employee_id, [row]);
+  }
+  return groups;
+}
+
 function isFullCalendarMonth(startDate: string, endDate: string) {
   if (!startDate.endsWith("-01")) return false;
   const [year, month] = startDate.split("-").map(Number);
@@ -298,16 +313,26 @@ export async function POST(request: NextRequest) {
   let totalDeductions = 0;
   let totalNet = 0;
 
+  const salaryRowsByEmployee = groupByEmployeeId(salaryRows);
+  const contractRowsByEmployee = groupByEmployeeId(contractRows);
+  const sessionsByEmployee = groupByEmployeeId(sessions);
+  const plannedDaysByEmployee = groupByEmployeeId(plannedDays);
+  const absencesByEmployee = groupByEmployeeId(absences);
+  const overtimeRowsByEmployee = groupByEmployeeId(overtimeRows);
+  const hourBankRowsByEmployee = groupByEmployeeId(hourBankRows);
+  const timeEntriesByEmployee = groupByEmployeeId(timeEntries);
+  const emptyRows: never[] = [];
+
   for (const employee of employees) {
-    const salarySegments = salarySegmentsForEmployee(employee, salaryRows, period.start_date, period.end_date);
-    const contractSegments = contractSegmentsForEmployee(employee.id, contractRows, period.start_date, period.end_date);
-    const employeeSessions = sessions.filter((session) => session.employee_id === employee.id);
-    const absenceEffects = totalAbsenceEffects(employee, salarySegments, employeeSessions, plannedDays, absences);
+    const salarySegments = salarySegmentsForEmployee(employee, salaryRowsByEmployee.get(employee.id) || emptyRows, period.start_date, period.end_date);
+    const contractSegments = contractSegmentsForEmployee(employee.id, contractRowsByEmployee.get(employee.id) || emptyRows, period.start_date, period.end_date);
+    const employeeSessions = sessionsByEmployee.get(employee.id) || emptyRows;
+    const absenceEffects = totalAbsenceEffects(employee, salarySegments, employeeSessions, plannedDaysByEmployee.get(employee.id) || emptyRows, absencesByEmployee.get(employee.id) || emptyRows);
     for (const divergence of absenceEffects.divergences) divergenceRows.push({ employee_id: employee.id, branch_id: employee.branch_id, ...divergence });
     if (employeeSessions.some((session) => !session.schedule_snapshot || !session.schedule_snapshot_checksum)) divergenceRows.push({ employee_id: employee.id, branch_id: employee.branch_id, code: "HISTORICAL_SNAPSHOT_MISSING", severity: "critical", message: "Há sessão sem snapshot histórico validado.", details: {} });
     const attendance = calculateSessionAttendanceV51(
       employeeSessions.map((session) => ({ id: session.id, workDate: session.work_date, status: session.status, scheduleSnapshot: session.schedule_snapshot })),
-      timeEntries.filter((entry) => entry.employee_id === employee.id && entry.work_session_id).map((entry) => ({ id: entry.id, workSessionId: entry.work_session_id as string, action: entry.action, occurredAt: entry.entry_timestamp, status: entry.status, lateMinutes: entry.late_minutes, earlyLeaveMinutes: entry.early_leave_minutes })),
+      (timeEntriesByEmployee.get(employee.id) || emptyRows).filter((entry) => entry.work_session_id).map((entry) => ({ id: entry.id, workSessionId: entry.work_session_id as string, action: entry.action, occurredAt: entry.entry_timestamp, status: entry.status, lateMinutes: entry.late_minutes, earlyLeaveMinutes: entry.early_leave_minutes })),
     );
     const result = calculateProfessionalPayrollV51({
       employeeId: employee.id,
@@ -315,10 +340,10 @@ export async function POST(request: NextRequest) {
       competenceEnd: period.end_date,
       salarySegments,
       contractSegments,
-      overtime: overtimeForEmployee(employee.id, overtimeRows),
+      overtime: overtimeForEmployee(employee.id, overtimeRowsByEmployee.get(employee.id) || emptyRows),
       nightMinutes: nightMinutesForEmployee(employee.id, employeeSessions),
       nightByDate: nightByDateForEmployee(employee.id, employeeSessions),
-      hourBankMovements: hourBankRows.filter((movement) => movement.employee_id === employee.id).map((movement) => ({ id: movement.id, movementType: movement.movement_type, minutes: Number(movement.minutes), status: movement.status, movementDate: movement.movement_date, expiresOn: movement.expires_on, reversalOf: movement.reversal_of })),
+      hourBankMovements: (hourBankRowsByEmployee.get(employee.id) || emptyRows).map((movement) => ({ id: movement.id, movementType: movement.movement_type, minutes: Number(movement.minutes), status: movement.status, movementDate: movement.movement_date, expiresOn: movement.expires_on, reversalOf: movement.reversal_of })),
       attendance,
       deductions: absenceEffects.deductions, earnings: [], inssBrackets, fgtsRateBasisPoints: fgtsRate,
     });

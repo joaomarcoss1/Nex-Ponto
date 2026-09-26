@@ -74,8 +74,13 @@ export async function buildPayrollClosureChecklist(supabase: SupabaseClient, pay
   const missingPayment = employees.filter((employee: any) => !employee.pix_key && !employee.bank_account);
   const branchSet = new Set(employees.map((employee: any) => employee.branch_id).filter(Boolean));
   const branchesNotReady = branches.filter((branch: any) => branchSet.has(branch.id) && (!branch.active || branch.geofence_enabled === false || !branch.latitude || !branch.longitude || !Number(branch.allowed_radius_meters || 0) || !(branch.gps_ready || branch.geolocation_status === "confirmed")));
-  const employeesWithoutPayroll = employees.filter((employee: any) => !items.some((item: any) => item.employee_id === employee.id));
-  const employeesWithoutAnyPoint = employees.filter((employee: any) => !entries.some((entry: any) => entry.employee_id === employee.id));
+  // Sets instead of employees.filter(() => items/entries.some(...)): with real data (hundreds of
+  // employees times thousands of time entries in a payroll period) the nested scan was millions
+  // of comparisons on every checklist load; O(1) membership lookup fixes that.
+  const employeeIdsWithPayrollItem = new Set(items.map((item: any) => item.employee_id));
+  const employeeIdsWithAnyEntry = new Set(entries.map((entry: any) => entry.employee_id));
+  const employeesWithoutPayroll = employees.filter((employee: any) => !employeeIdsWithPayrollItem.has(employee.id));
+  const employeesWithoutAnyPoint = employees.filter((employee: any) => !employeeIdsWithAnyEntry.has(employee.id));
 
   const checks: Check[] = [
     check("pending_justifications", "critical", "Justificativas de falta pendentes", pendingJustifications),

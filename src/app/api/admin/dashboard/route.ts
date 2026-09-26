@@ -128,16 +128,22 @@ export async function GET(request: NextRequest) {
     }));
 
     const periodEntries = overtimeEntriesRes.data || [];
+    // Precompute once: with N employees and D days, the naive .some() scan below re-read the
+    // whole period's time entries for every employee/day pair (O(days*employees*entries) —
+    // tens of millions of comparisons once a tenant has real history). A Set lookup makes each
+    // check O(1) instead.
+    const startedShiftKeys = new Set(
+      periodEntries
+        .filter((entry: any) => entry.action === "start_shift")
+        .map((entry: any) => `${entry.employee_id}|${entry.entry_date}`)
+    );
     const days = eachDateInclusive(periodStart, periodEnd);
     const absencesByMonth = days.reduce((sum, date) => {
       return (
         sum +
         employees.filter((employee: any) => {
           const expected = resolveExpectedJourney({ employee, dateKey: date, schedules, holidays: scheduleHolidays as any }).expected;
-          const started = periodEntries.some(
-            (entry: any) => entry.employee_id === employee.id && entry.entry_date === date && entry.action === "start_shift"
-          );
-          return expected && !started;
+          return expected && !startedShiftKeys.has(`${employee.id}|${date}`);
         }).length
       );
     }, 0);

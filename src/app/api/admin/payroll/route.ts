@@ -45,9 +45,21 @@ function countIncompleteEntryDays(entries: any[]) {
   return { missingEndShift, missingLunchReturn, missingFinalAfterLunch };
 }
 
+function groupByEmployeeId(rows: any[]) {
+  const groups = new Map<string, any[]>();
+  for (const row of rows) {
+    const list = groups.get(row.employee_id);
+    if (list) list.push(row);
+    else groups.set(row.employee_id, [row]);
+  }
+  return groups;
+}
+
+// `history` here is already scoped to a single employee by the caller (see groupByEmployeeId
+// below) — filtering the whole tenant's salary history again for every employee in a .map() is
+// exactly the O(employees * rows) slowdown fixed across this route.
 function resolveSalarySnapshot(employee: any, history: any[], startDate: string, endDate: string) {
   const candidates = history
-    .filter((item) => item.employee_id === employee.id)
     .filter((item) => {
       const validFrom = item.valid_from || item.effective_from || employee.admission_date;
       const validUntil = item.valid_until || "9999-12-31";
@@ -262,15 +274,24 @@ async function _legacyPostReadOnlyPreserved(request: NextRequest) {
       .lte("entry_date", body.end_date);
     const overtimeReviews = await fetchAllRows<any>((from, to) => overtimeQuery.range(from, to));
 
+    // Grouped once (O(rows)) instead of re-filtering the whole period's entries, justifications,
+    // overtime reviews and salary history for every employee inside the .map() below — with real
+    // data (hundreds of employees, thousands of entries per payroll period) that was millions of
+    // redundant comparisons on every folha generated.
+    const entriesByEmployee = groupByEmployeeId(entries);
+    const justificationsByEmployee = groupByEmployeeId(justifications);
+    const overtimeReviewsByEmployee = groupByEmployeeId(overtimeReviews);
+    const salaryHistoryByEmployee = groupByEmployeeId(salaryHistory);
+
     const items = (employees || []).map((employee: any) => {
-      const salary = resolveSalarySnapshot(employee, salaryHistory, body.start_date, body.end_date);
+      const salary = resolveSalarySnapshot(employee, salaryHistoryByEmployee.get(employee.id) || [], body.start_date, body.end_date);
       const calculation = calculatePayrollItemWithEngines({
         employee: salary.employee,
-        entries: entries.filter((entry: any) => entry.employee_id === salary.employee.id),
-        justifications: justifications.filter((justification: any) => justification.employee_id === salary.employee.id) as any,
+        entries: entriesByEmployee.get(salary.employee.id) || [],
+        justifications: (justificationsByEmployee.get(salary.employee.id) || []) as any,
         holidays: holidays as any,
         schedules,
-        overtimeReviews: overtimeReviews.filter((review: any) => review.employee_id === salary.employee.id),
+        overtimeReviews: overtimeReviewsByEmployee.get(salary.employee.id) || [],
         settings,
         startDate: body.start_date,
         endDate: body.end_date,
