@@ -35,12 +35,12 @@ export function PwaStatus() {
   if (!offline && !prompt) return null;
   return (
     <div className="fixed left-4 right-4 top-4 z-40 mx-auto flex max-w-xl items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-soft">
-      <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
-        {offline ? <WifiOff className="h-4 w-4 text-red-600" /> : <Download className="h-4 w-4 text-brand-700" />}
-        {offline ? "Você está offline. Pontos oficiais exigem GPS e sincronização." : "Instalar app no celular"}
+      <div className="flex min-w-0 items-center gap-2 text-sm font-bold text-slate-700">
+        {offline ? <WifiOff className="h-4 w-4 shrink-0 text-red-600" /> : <Download className="h-4 w-4 shrink-0 text-brand-700" />}
+        <span className="min-w-0">{offline ? "Você está offline. Pontos oficiais exigem GPS e sincronização." : "Instalar app no celular"}</span>
       </div>
       {prompt ? (
-        <Button size="sm" onClick={install}>
+        <Button size="sm" onClick={install} className="shrink-0">
           Instalar
         </Button>
       ) : null}
