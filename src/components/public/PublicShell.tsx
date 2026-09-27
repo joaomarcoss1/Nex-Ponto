@@ -41,10 +41,10 @@ export function PublicShell({
           </span>
         </header>
 
-        <section className={clsx("mt-6 w-full min-w-0 max-w-full overflow-hidden rounded-[24px] bg-white p-4 ring-1 ring-slate-200/60 shadow-[0_24px_80px_rgba(10,31,77,0.18)] sm:mt-12 sm:rounded-[30px] sm:p-5", className)}>
+        <section className={clsx("mt-6 w-full min-w-0 max-w-full overflow-hidden rounded-[24px] bg-white p-4 ring-1 ring-slate-200/60 shadow-[0_24px_80px_rgba(10,31,77,0.18)] dark:bg-slate-800 dark:ring-slate-700/60 sm:mt-12 sm:rounded-[30px] sm:p-5", className)}>
           <div className="mb-5">
-            <h1 className="break-words text-2xl font-black leading-tight text-slate-900 sm:text-3xl">{title}</h1>
-            <p className="mt-2 text-sm font-medium leading-6 text-slate-600">{subtitle}</p>
+            <h1 className="break-words text-2xl font-black leading-tight text-slate-900 dark:text-white sm:text-3xl">{title}</h1>
+            <p className="mt-2 text-sm font-medium leading-6 text-slate-600 dark:text-slate-400">{subtitle}</p>
           </div>
           {children}
         </section>
@@ -52,7 +52,7 @@ export function PublicShell({
         <div className="flex justify-center pb-4 md:pb-0">
           <Link
             href="/admin/login"
-            className="group inline-flex max-w-full items-center justify-center gap-2 rounded-full border border-brand-100 bg-white/70 px-3 py-2 text-center text-xs font-bold leading-tight text-brand-900 shadow-[0_10px_30px_rgba(10,31,77,0.08)] transition hover:-translate-y-0.5 hover:border-brand-300 hover:bg-white hover:text-brand-700"
+            className="group inline-flex max-w-full items-center justify-center gap-2 rounded-full border border-brand-100 bg-white/70 px-3 py-2 text-center text-xs font-bold leading-tight text-brand-900 shadow-[0_10px_30px_rgba(10,31,77,0.08)] transition hover:-translate-y-0.5 hover:border-brand-300 hover:bg-white hover:text-brand-700 dark:border-slate-700 dark:bg-slate-800/70 dark:text-brand-200 dark:hover:bg-slate-800 dark:hover:text-brand-100"
             aria-label="Acessar área administrativa"
           >
             <LockKeyhole className="h-3.5 w-3.5 opacity-70 transition group-hover:opacity-100" />

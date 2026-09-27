@@ -45,10 +45,10 @@ export function BrandMark({ compact = false, inverse = false }: { compact?: bool
         className="shrink-0 object-contain drop-shadow-[0_10px_22px_rgba(18,104,243,0.25)]"
       />
       <div className="min-w-0 leading-none">
-        <p className={clsx("truncate text-lg font-black leading-tight tracking-[-0.04em]", inverse ? "text-white" : "text-slate-950")}>
+        <p className={clsx("truncate text-lg font-black leading-tight tracking-[-0.04em]", inverse ? "text-white" : "text-slate-950 dark:text-white")}>
           {branding.app_name}
         </p>
-        <p className={clsx("truncate text-[9px] font-extrabold uppercase tracking-[0.16em]", inverse ? "text-blue-100" : "text-brand-600")}>
+        <p className={clsx("truncate text-[9px] font-extrabold uppercase tracking-[0.16em]", inverse ? "text-blue-100" : "text-brand-600 dark:text-brand-300")}>
           {branding.app_tagline}
         </p>
       </div>

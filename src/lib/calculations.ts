@@ -3,36 +3,12 @@ import type {
   DailyRateMode,
   Employee,
   MinimalHoliday,
-  PayrollPeriodType,
   SystemSettings,
   TimeAction,
   TimeEntry
 } from "@/types/domain";
 
 export type { MinimalHoliday } from "@/types/domain";
-
-export type MinimalJustification = {
-  employee_id: string;
-  absence_date: string;
-  status: "pending" | "approved" | "rejected";
-};
-
-export type PayrollCalculation = {
-  base_salary: number;
-  daily_rate: number;
-  expected_work_days: number;
-  worked_days: number;
-  approved_absences: number;
-  discounted_absences: number;
-  total_late_minutes: number;
-  total_early_leave_minutes: number;
-  overtime_minutes: number;
-  extra_days: number;
-  absence_discount_amount: number;
-  overtime_amount: number;
-  extra_day_amount: number;
-  final_amount: number;
-};
 
 export function dateKeyInTimezone(date = new Date(), timeZone = TIMEZONE) {
   return new Intl.DateTimeFormat("en-CA", {
@@ -173,17 +149,6 @@ export function hasPendingHolidayDecision(dateKey: string, branchId: string, hol
   );
 }
 
-export function expectedWorkDaysForPeriod(
-  employee: Pick<Employee, "work_days" | "branch_id">,
-  startDate: string,
-  endDate: string,
-  holidays: MinimalHoliday[]
-) {
-  return eachDateInclusive(startDate, endDate).filter(
-    (dateKey) => employee.work_days.includes(weekdayFromDateKey(dateKey)) && !isNonWorkingDay(dateKey, employee.branch_id, holidays)
-  ).length;
-}
-
 export function resolveDailyRate(
   employee: Pick<Employee, "daily_rate" | "daily_rate_mode" | "monthly_salary">,
   expectedWorkDays: number,
@@ -194,91 +159,6 @@ export function resolveDailyRate(
   }
   if (mode === "fixed_30") return normalizeMoney(employee.monthly_salary / 30);
   return normalizeMoney(employee.monthly_salary / Math.max(1, expectedWorkDays));
-}
-
-export function calculatePayrollItem(params: {
-  employee: Employee;
-  entries: TimeEntry[];
-  justifications: MinimalJustification[];
-  holidays: MinimalHoliday[];
-  settings: SystemSettings;
-  startDate: string;
-  endDate: string;
-  periodType: PayrollPeriodType;
-}): PayrollCalculation {
-  const { employee, entries, justifications, holidays, settings, startDate, endDate, periodType } = params;
-  const dates = eachDateInclusive(startDate, endDate);
-  const expectedDays = expectedWorkDaysForPeriod(employee, startDate, endDate, holidays);
-  const dailyRate = resolveDailyRate(employee, expectedDays, settings.daily_rate_calculation);
-  const byDate = new Map<string, TimeEntry[]>();
-
-  entries.forEach((entry) => {
-    if (!byDate.has(entry.entry_date)) byDate.set(entry.entry_date, []);
-    byDate.get(entry.entry_date)?.push(entry);
-  });
-
-  let workedDays = 0;
-  let approvedAbsences = 0;
-  let discountedAbsences = 0;
-  let extraDays = 0;
-  let lateMinutes = 0;
-  let earlyLeaveMinutes = 0;
-  let overtimeMinutes = 0;
-
-  for (const dateKey of dates) {
-    const expected =
-      employee.work_days.includes(weekdayFromDateKey(dateKey)) && !isNonWorkingDay(dateKey, employee.branch_id, holidays);
-    const dayEntries = byDate.get(dateKey) || [];
-    const hasStart = dayEntries.some((entry) => entry.action === "start_shift" && ["valid", "pending_review", "adjusted"].includes(entry.status));
-
-    lateMinutes += dayEntries.reduce((sum, entry) => sum + Number(entry.late_minutes || 0), 0);
-    earlyLeaveMinutes += dayEntries.reduce((sum, entry) => sum + Number(entry.early_leave_minutes || 0), 0);
-
-    if (hasStart) {
-      workedDays += expected ? 1 : 0;
-      extraDays += expected ? 0 : 1;
-      const workedMinutes = calculateWorkedMinutes(dayEntries);
-      if (employee.allow_overtime && workedMinutes > employee.expected_daily_minutes) {
-        overtimeMinutes += workedMinutes - employee.expected_daily_minutes;
-      }
-      continue;
-    }
-
-    if (!expected) continue;
-    const approved = justifications.some(
-      (justification) =>
-        justification.employee_id === employee.id && justification.absence_date === dateKey && justification.status === "approved"
-    );
-    if (approved) approvedAbsences += 1;
-    else discountedAbsences += 1;
-  }
-
-  const baseSalary =
-    employee.employment_type === "mensalista" && periodType === "monthly"
-      ? normalizeMoney(employee.monthly_salary)
-      : normalizeMoney(dailyRate * expectedDays);
-  const hourValue = employee.expected_daily_minutes > 0 ? dailyRate / employee.expected_daily_minutes : 0;
-  const absenceDiscount = normalizeMoney(discountedAbsences * dailyRate);
-  const overtimeAmount = normalizeMoney(overtimeMinutes * hourValue * Number(settings.overtime_multiplier ?? 1));
-  const extraDayAmount = normalizeMoney(extraDays * dailyRate);
-  const finalAmount = normalizeMoney(baseSalary - absenceDiscount + overtimeAmount + extraDayAmount);
-
-  return {
-    base_salary: baseSalary,
-    daily_rate: dailyRate,
-    expected_work_days: expectedDays,
-    worked_days: workedDays,
-    approved_absences: approvedAbsences,
-    discounted_absences: discountedAbsences,
-    total_late_minutes: lateMinutes,
-    total_early_leave_minutes: earlyLeaveMinutes,
-    overtime_minutes: overtimeMinutes,
-    extra_days: extraDays,
-    absence_discount_amount: absenceDiscount,
-    overtime_amount: overtimeAmount,
-    extra_day_amount: extraDayAmount,
-    final_amount: finalAmount
-  };
 }
 
 export function analyzeInconsistencies(entries: TimeEntry[]) {

@@ -28,6 +28,17 @@
   --brand-dark: #0a1f4d;
   --sun: #f4b51c;
   --line: #dce4f0;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b1220;
+    --surface: #161f32;
+    --foreground: #e5e9f2;
+    --line: #2a3450;
+    color-scheme: dark;
+  }
 }
 
 * {

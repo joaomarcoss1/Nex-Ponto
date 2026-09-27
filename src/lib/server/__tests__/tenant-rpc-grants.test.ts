@@ -115,4 +115,29 @@ describe("tenant RPC grant hygiene (regression guard for migration 060)", () => 
       expect(roles?.has("authenticated"), `${fn} must not be granted to authenticated`).toBeFalsy();
     }
   });
+
+  it("the pre-multitenant admin helper functions (migration 061) never get re-granted to anon/authenticated", () => {
+    // These predate the tenant_id/RLS model (they read admin_users by
+    // auth.uid()/auth.email() with no tenant scoping at all), have zero
+    // callers left (verified against pg_policies, every function body, and
+    // the app's own .rpc() call sites on 2026-09-27), and had EXECUTE
+    // revoked from anon/authenticated directly on the live database plus
+    // migration 061. They are kept (not dropped) only for reference.
+    const orphaned = [
+      "is_admin",
+      "is_master_admin",
+      "current_admin_id",
+      "current_admin_branch_id",
+      "current_admin_branch_ids",
+      "current_admin_allowed_branch_ids",
+      "admin_can_access_all_branches",
+      "current_admin_profile",
+      "has_financial_permission"
+    ];
+    for (const fn of orphaned) {
+      const roles = currentGrants.get(fn);
+      expect(roles?.has("anon"), `${fn} must not be granted to anon`).toBeFalsy();
+      expect(roles?.has("authenticated"), `${fn} must not be granted to authenticated`).toBeFalsy();
+    }
+  });
 });

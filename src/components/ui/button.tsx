@@ -27,7 +27,7 @@ export function buttonClassName({
     variant === "success" && "bg-emerald-600 text-white shadow-[0_14px_30px_rgba(5,150,105,0.22)] hover:-translate-y-0.5 hover:bg-emerald-700",
     variant === "warning" && "bg-amber-500 text-amber-950 shadow-[0_14px_30px_rgba(245,158,11,0.2)] hover:-translate-y-0.5 hover:bg-amber-400",
     variant === "danger" && "bg-red-600 text-white shadow-[0_14px_30px_rgba(220,38,38,0.2)] hover:-translate-y-0.5 hover:bg-red-700",
-    variant === "ghost" && "border border-slate-200 bg-white text-slate-700 shadow-[0_8px_22px_rgba(15,23,42,0.05)] hover:-translate-y-0.5 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-800",
+    variant === "ghost" && "border border-slate-200 bg-white text-slate-700 shadow-[0_8px_22px_rgba(15,23,42,0.05)] hover:-translate-y-0.5 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-brand-500 dark:hover:bg-slate-700 dark:hover:text-white",
     size === "sm" && "min-h-9 px-3 py-2 text-xs",
     size === "md" && "min-h-11 px-4 py-2.5 text-sm",
     size === "lg" && "min-h-14 px-5 py-3 text-base",

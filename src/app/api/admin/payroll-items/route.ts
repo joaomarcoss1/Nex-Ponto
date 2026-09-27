@@ -6,7 +6,19 @@ import { assertCanAccessBranch } from "@/lib/server/branch-permissions";
 import { fail, ok, readJson } from "@/lib/server/http";
 
 
-export async function PATCH(request: NextRequest) {
+export async function PATCH(_request: NextRequest) {
+  return fail("Ajustes manuais no motor legado foram desativados. Use o fluxo profissional v5.1.", 409, { code: "LEGACY_PAYROLL_READ_ONLY" });
+}
+
+// Preserved for reference/rollback, matching the sibling routes in
+// /api/admin/payroll (see _legacyPostReadOnlyPreserved /
+// _legacyPatchReadOnlyPreserved there). This endpoint let admins edit
+// financial values on individual payroll_items rows and was the one write
+// path into the legacy engine's data that migration 037's
+// "professional engine is the sole source for new generations" intent
+// missed disabling — /admin/folha-legada (the only caller) never used any
+// other route to mutate payroll_items.
+async function _legacyPayrollItemsPatchReadOnlyPreserved(request: NextRequest) {
   const auth = await requireAdmin(request, { all: ["payroll.calculate"] });
   if ("error" in auth) return auth.error;
   const body = await readJson<any>(request);
