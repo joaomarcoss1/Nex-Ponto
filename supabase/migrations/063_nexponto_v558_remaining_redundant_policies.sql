@@ -23,20 +23,26 @@
 -- real access-control decision, not a performance no-op, and needs a human
 -- product decision rather than an automated pattern match.
 
-drop policy clock_risk_tenant_write on public.clock_risk_events;
-create policy clock_risk_tenant_write_insert on public.clock_risk_events for insert to authenticated
+drop policy if exists "clock_risk_tenant_write" on public.clock_risk_events;
+drop policy if exists "clock_risk_tenant_write_insert" on public.clock_risk_events;
+create policy "clock_risk_tenant_write_insert" on public.clock_risk_events for insert to authenticated
   with check (tenant_id = public.current_tenant_id() and public.is_tenant_admin_member(tenant_id));
-create policy clock_risk_tenant_write_update on public.clock_risk_events for update to authenticated
+drop policy if exists "clock_risk_tenant_write_update" on public.clock_risk_events;
+create policy "clock_risk_tenant_write_update" on public.clock_risk_events for update to authenticated
   using (tenant_id = public.current_tenant_id() and public.is_tenant_admin_member(tenant_id))
   with check (tenant_id = public.current_tenant_id() and public.is_tenant_admin_member(tenant_id));
-create policy clock_risk_tenant_write_delete on public.clock_risk_events for delete to authenticated
+drop policy if exists "clock_risk_tenant_write_delete" on public.clock_risk_events;
+create policy "clock_risk_tenant_write_delete" on public.clock_risk_events for delete to authenticated
   using (tenant_id = public.current_tenant_id() and public.is_tenant_admin_member(tenant_id));
 
-drop policy tenant_branding_admin_write on public.tenant_branding;
-create policy tenant_branding_admin_write_insert on public.tenant_branding for insert to authenticated
+drop policy if exists "tenant_branding_admin_write" on public.tenant_branding;
+drop policy if exists "tenant_branding_admin_write_insert" on public.tenant_branding;
+create policy "tenant_branding_admin_write_insert" on public.tenant_branding for insert to authenticated
   with check (tenant_id = public.current_tenant_id() and public.is_tenant_admin_member(tenant_id));
-create policy tenant_branding_admin_write_update on public.tenant_branding for update to authenticated
+drop policy if exists "tenant_branding_admin_write_update" on public.tenant_branding;
+create policy "tenant_branding_admin_write_update" on public.tenant_branding for update to authenticated
   using (tenant_id = public.current_tenant_id() and public.is_tenant_admin_member(tenant_id))
   with check (tenant_id = public.current_tenant_id() and public.is_tenant_admin_member(tenant_id));
-create policy tenant_branding_admin_write_delete on public.tenant_branding for delete to authenticated
+drop policy if exists "tenant_branding_admin_write_delete" on public.tenant_branding;
+create policy "tenant_branding_admin_write_delete" on public.tenant_branding for delete to authenticated
   using (tenant_id = public.current_tenant_id() and public.is_tenant_admin_member(tenant_id));
