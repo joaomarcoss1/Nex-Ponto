@@ -2,23 +2,14 @@ import { defaultSettings, TIMEZONE } from "@/lib/constants";
 import type {
   DailyRateMode,
   Employee,
-  HolidayOperationStatus,
-  HolidayType,
+  MinimalHoliday,
   PayrollPeriodType,
   SystemSettings,
   TimeAction,
   TimeEntry
 } from "@/types/domain";
 
-export type MinimalHoliday = {
-  id?: string;
-  holiday_date: string;
-  branch_id: string | null;
-  type: HolidayType;
-  active: boolean;
-  operation_status?: HolidayOperationStatus;
-  decision_id?: string | null;
-};
+export type { MinimalHoliday } from "@/types/domain";
 
 export type MinimalJustification = {
   employee_id: string;
@@ -137,16 +128,6 @@ export function getNextActions(entries: Pick<TimeEntry, "action" | "status" | "e
 
 export function isOutOfOrder(action: TimeAction, entries: Pick<TimeEntry, "action" | "status" | "entry_timestamp">[]) {
   return !getNextActions(entries).allowed.includes(action);
-}
-
-export function computeLateMinutes(employee: Pick<Employee, "expected_start_time">, now = new Date(), tolerance = 15) {
-  const diff = minutesSinceMidnight(now) - parseTimeToMinutes(employee.expected_start_time);
-  return diff > tolerance ? diff : 0;
-}
-
-export function computeEarlyLeaveMinutes(employee: Pick<Employee, "expected_end_time">, now = new Date(), tolerance = 15) {
-  const diff = parseTimeToMinutes(employee.expected_end_time) - minutesSinceMidnight(now);
-  return diff > tolerance ? diff : 0;
 }
 
 export function calculateWorkedMinutes(entries: Pick<TimeEntry, "action" | "entry_timestamp" | "status">[]) {

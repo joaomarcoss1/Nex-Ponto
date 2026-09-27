@@ -5,13 +5,18 @@ import {
   calculateDistanceMeters,
   dateKeyInTimezone,
   getNextActions,
-  isOutOfOrder,
   minutesSinceMidnight,
   nowIso,
   parseTimeToMinutes,
   weekdayFromDateKey
 } from "@/lib/calculations";
 import { computeEarlyLeaveFromJourney, computeLateFromJourney, fetchScheduleContext, resolveExpectedJourney } from "@/lib/services/schedule-engine";
+import {
+  blockReasonMessage,
+  buildDuplicateResponse,
+  evaluateBlockingConditions,
+  evaluateScheduleCompliance
+} from "@/lib/services/clock-register-logic";
 import { requirePublicTenant } from "@/lib/server/public-tenant";
 import { fail, ok, readJson } from "@/lib/server/http";
 import {
@@ -98,18 +103,6 @@ function localTimeWithinHours(nowMinutes: number, opensAt: string, closesAt: str
   return nowMinutes >= opens || nowMinutes <= closes;
 }
 
-function latestOpenBreak(entries: Array<{ action: TimeAction; entry_timestamp: string; status: TimeEntryStatus }>) {
-  const stack: Date[] = [];
-  const usable = entries
-    .filter((entry) => ["valid", "pending_review", "adjusted"].includes(entry.status))
-    .sort((a, b) => new Date(a.entry_timestamp).getTime() - new Date(b.entry_timestamp).getTime());
-  for (const entry of usable) {
-    if (entry.action === "start_lunch") stack.push(new Date(entry.entry_timestamp));
-    if (entry.action === "end_lunch") stack.pop();
-  }
-  return stack.at(-1) || null;
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body = await readJson<ClockBody>(request);
@@ -138,25 +131,7 @@ export async function POST(request: NextRequest) {
       .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
     if (repeatedError) return fail("Erro ao verificar tentativa de ponto.", 500, repeatedError.message);
-    if (repeatedEntry) {
-      let receiptUrl: string | null = null;
-      try {
-        receiptUrl = `/api/public/clock/receipt?entryId=${repeatedEntry.id}&token=${createReceiptToken(repeatedEntry.id)}`;
-      } catch {
-        receiptUrl = null;
-      }
-      return ok({
-        entry: repeatedEntry,
-        confirmation: "Este ponto já havia sido recebido. Mantivemos o primeiro registro para evitar duplicidade.",
-        distanceMeters: repeatedEntry.distance_meters,
-        radiusMeters: repeatedEntry.validation_radius_meters,
-        accuracyMeters: repeatedEntry.gps_accuracy_meters,
-        insideAllowedRadius: repeatedEntry.inside_allowed_radius,
-        status: repeatedEntry.status,
-        receiptAvailable: Boolean(receiptUrl),
-        receiptUrl,
-      });
-    }
+    if (repeatedEntry) return ok(buildDuplicateResponse(repeatedEntry));
 
     const settings = await getSystemSettings(supabase);
     const { data: employee, error: employeeError } = await supabase
@@ -364,18 +339,18 @@ export async function POST(request: NextRequest) {
       ? localTimeWithinHours(registeredMinutes, operatingHour.opens_at, operatingHour.closes_at)
       : !operatingHour.is_closed);
 
-    const reviewFlags: string[] = [];
-    let blockReason: string | null = null;
-    if (devicePolicy.review) reviewFlags.push("new_or_untrusted_device");
-    if (poorAccuracy && settings.block_poor_gps_accuracy === true) blockReason = "poor_gps_accuracy";
-    if (!inside && !settings.allow_outside_radius_review) blockReason = "outside_radius";
-    if (isOutOfOrder(action, sessionEntries || [])) blockReason = "out_of_order";
-
     const outsideHoursPolicy = String((settings as Record<string, unknown>).outside_operating_hours_policy || "justify");
-    if (action === "start_shift" && !branchOpen) {
-      if (outsideHoursPolicy === "block") blockReason = "outside_operating_hours";
-      else reviewFlags.push("outside_operating_hours");
-    }
+    const { reviewFlags, blockReason } = evaluateBlockingConditions({
+      devicePolicy,
+      poorAccuracy,
+      blockPoorGpsAccuracy: settings.block_poor_gps_accuracy === true,
+      inside,
+      allowOutsideRadiusReview: Boolean(settings.allow_outside_radius_review),
+      action,
+      sessionEntries: sessionEntries || [],
+      branchOpen,
+      outsideHoursPolicy
+    });
 
     const lastLocatedEntry = [...(sessionEntries || [])]
       .reverse()
@@ -444,15 +419,8 @@ export async function POST(request: NextRequest) {
     if (attemptError) return fail("Não foi possível preservar a evidência da tentativa.", 500, attemptError.message);
 
     if (blockReason) {
-      const messages: Record<string, string> = {
-        poor_gps_accuracy: `A precisão do GPS está acima do limite permitido (${gpsAccuracy}m > ${maxAccuracy}m).`,
-        outside_radius: `Você está a ${distance}m da filial. O raio permitido é ${allowedRadius}m.`,
-        out_of_order: getNextActions(sessionEntries || []).recommended
-          ? `Ação fora de ordem. Próximo ponto esperado: ${actionLabels[getNextActions(sessionEntries || []).recommended as TimeAction]}.`
-          : "A jornada já foi encerrada.",
-        outside_operating_hours: "A filial está fora do horário de funcionamento configurado."
-      };
-      return fail(messages[blockReason] || "Tentativa de ponto bloqueada.", blockReason === "out_of_order" ? 409 : 403, { attemptId: attempt.id });
+      const message = blockReasonMessage(blockReason, { gpsAccuracy, maxAccuracy, distance, allowedRadius, sessionEntries: sessionEntries || [] });
+      return fail(message, blockReason === "out_of_order" ? 409 : 403, { attemptId: attempt.id });
     }
 
     if (!inside) reviewFlags.push("outside_radius");
@@ -469,31 +437,18 @@ export async function POST(request: NextRequest) {
       if (earlyLeaveMinutes > 0) reviewFlags.push("early_leave");
     }
 
-    let lunchVariationMinutes = 0;
-    let scheduleComplianceStatus = "ok";
     const lunchTolerance = Number(settings.lunch_tolerance_minutes ?? settings.late_tolerance_minutes ?? 15);
-    if (action === "start_shift" && lateMinutes > 0) scheduleComplianceStatus = "late";
-    if (action === "end_shift" && earlyLeaveMinutes > 0) scheduleComplianceStatus = "early_leave";
-    if (action === "start_lunch" && journey.expected_lunch_start_time) {
-      const earlyBreak = parseTimeToMinutes(journey.expected_lunch_start_time) - registeredMinutes;
-      if (earlyBreak > lunchTolerance) {
-        lunchVariationMinutes = earlyBreak;
-        scheduleComplianceStatus = "break_early";
-        reviewFlags.push("break_early");
-      }
-    }
-    if (action === "end_lunch") {
-      const openBreak = latestOpenBreak((sessionEntries || []) as Array<{ action: TimeAction; entry_timestamp: string; status: TimeEntryStatus }>);
-      if (openBreak && journey.expected_lunch_minutes) {
-        const duration = Math.max(0, Math.round((new Date(timestamp).getTime() - openBreak.getTime()) / 60000));
-        const over = duration - Number(journey.expected_lunch_minutes || 0);
-        if (over > lunchTolerance) {
-          lunchVariationMinutes = over;
-          scheduleComplianceStatus = "break_long";
-          reviewFlags.push("break_long");
-        }
-      }
-    }
+    const { lunchVariationMinutes, scheduleComplianceStatus, reviewFlags: complianceFlags } = evaluateScheduleCompliance({
+      action,
+      registeredMinutes,
+      timestamp,
+      journey,
+      lunchTolerance,
+      lateMinutes,
+      earlyLeaveMinutes,
+      sessionEntries: (sessionEntries || []) as Array<{ action: TimeAction; entry_timestamp: string; status: TimeEntryStatus }>
+    });
+    for (const flag of complianceFlags) reviewFlags.push(flag);
 
     const needsJustification = lateMinutes > 0 || earlyLeaveMinutes > 0 || lunchVariationMinutes > 0 || reviewFlags.includes("outside_operating_hours");
     if (needsJustification && !body.justificationText?.trim()) {
@@ -559,19 +514,7 @@ export async function POST(request: NextRequest) {
           .select("*")
           .eq("idempotency_key", idempotencyKey)
           .maybeSingle();
-        if (existingEntry) {
-          return ok({
-            entry: existingEntry,
-            confirmation: "Este ponto já havia sido recebido. Mantivemos o primeiro registro para evitar duplicidade.",
-            distanceMeters: existingEntry.distance_meters,
-            radiusMeters: existingEntry.validation_radius_meters,
-            accuracyMeters: existingEntry.gps_accuracy_meters,
-            insideAllowedRadius: existingEntry.inside_allowed_radius,
-            status: existingEntry.status,
-            receiptAvailable: true,
-            receiptUrl: `/api/public/clock/receipt?entryId=${existingEntry.id}&token=${createReceiptToken(existingEntry.id)}`,
-          });
-        }
+        if (existingEntry) return ok(buildDuplicateResponse(existingEntry));
         return fail("Este ponto já foi recebido.", 409);
       }
       if (message.includes("CLOSED_PERIOD")) return fail("Esta competência está fechada e não aceita novas marcações.", 409);
