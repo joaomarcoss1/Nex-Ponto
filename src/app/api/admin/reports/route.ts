@@ -7,13 +7,43 @@ import { analyzeInconsistencies } from "@/lib/calculations";
 import { formatDateTime, formatMoney, minutesToHourText } from "@/lib/format";
 import { buildAbsenceReport } from "@/lib/services/absence-engine";
 import { fetchScheduleContext } from "@/lib/services/schedule-engine";
-import { requireAdmin } from "@/lib/server/auth";
+import { requireAdmin, type AdminAuthSuccess } from "@/lib/server/auth";
 import { writeAuditLog } from "@/lib/server/audit";
 import type { ExportTable } from "@/lib/server/exporters";
 import { fail, ok } from "@/lib/server/http";
 import { canViewFinancialData, canAccessBranch, scopeByBranch } from "@/lib/server/branch-permissions";
 import { getSystemSettings } from "@/lib/server/settings";
 import { fetchAllRows, PaginationLimitError, PaginationTimeoutError } from "@/lib/server/pagination";
+import type { Employee, TimeEntry } from "@/types/domain";
+
+type WithBranchName = { branches?: { name?: string } };
+type EmployeeWithBranch = Employee & WithBranchName;
+type EmployeeSummaryRow = Pick<Employee, "id" | "full_name" | "role" | "employment_type" | "branch_id"> & WithBranchName;
+type JustificationStatusRow = { employee_id: string; branch_id: string | null; status: string };
+type OvertimeReviewRow = {
+  employee_id: string;
+  branch_id: string | null;
+  status: string;
+  entry_date?: string;
+  calculated_overtime_minutes: number | null;
+  overtime_minutes: number | null;
+  approved_overtime_minutes: number | null;
+  employees?: { full_name?: string } | null;
+};
+type PayrollItemPeriodRow = {
+  employee_id: string;
+  employee_name?: string | null;
+  branch_id: string | null;
+  final_amount: number | null;
+  absence_discount_amount: number | null;
+  overtime_amount: number | null;
+  extra_day_amount: number | null;
+  identified_absences?: number | null;
+  discounted_absences?: number | null;
+  approved_absences?: number | null;
+  rejected_absences?: number | null;
+  pending_absences?: number | null;
+};
 
 
 function asText(value: unknown) {
@@ -31,14 +61,24 @@ function compactMoney(value: unknown) {
   return formatMoney(Number(value || 0));
 }
 
-async function fetchReportRows(query: any) {
-  return fetchAllRows<any>((from, to) => query.range(from, to), {
+async function fetchReportRows<T = Record<string, unknown>>(query: { range: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }> }) {
+  return fetchAllRows<T>((from, to) => query.range(from, to), {
     pageSize: 1000,
     maxRows: 100_001,
     timeoutMs: 30_000,
   });
 }
 
+// moneySum/buildTable/GET's `data` variable are the one deliberate `any`
+// boundary left in this file: `type` selects between ~10 structurally
+// different row shapes (see loadAbsenceRows/loadEmployeeReportRows/
+// loadBranchReportRows/loadLunchReportRows above, each already fully typed
+// at the point the data is fetched) and TypeScript can't narrow an array's
+// element type from a runtime string switch without restructuring this into
+// one function per report type. Since this stage only formats already
+// shaped, already-validated rows for display/export, the cost of that
+// rewrite outweighs the benefit — a wrong field name here fails loudly (an
+// empty or "-" cell in the exported report), not silently.
 function moneySum(data: any[], key: string) {
   return data.reduce((sum, item) => sum + Number(item[key] || 0), 0);
 }
@@ -457,7 +497,7 @@ function buildTable(type: string, data: any[], footer: string, meta: string[] = 
 
 }
 
-async function loadAbsenceRows(auth: Awaited<ReturnType<typeof requireAdmin>> & any, params: URLSearchParams) {
+async function loadAbsenceRows(auth: AdminAuthSuccess, params: URLSearchParams) {
   const startDate = params.get("startDate") || new Date().toISOString().slice(0, 8) + "01";
   const endDate = params.get("endDate") || new Date().toISOString().slice(0, 10);
   let employeesQuery = scopeByBranch(auth.supabase.from("employees").select("*, branches:branches!employees_branch_id_fkey(name)").eq("active", true).order("full_name"), auth.context, "branch_id");
@@ -465,21 +505,21 @@ async function loadAbsenceRows(auth: Awaited<ReturnType<typeof requireAdmin>> & 
   if (params.get("employeeId")) employeesQuery = employeesQuery.eq("id", params.get("employeeId"));
   if (params.get("role")) employeesQuery = employeesQuery.ilike("role", `%${params.get("role")}%`);
   const [employees, entries, justifications] = await Promise.all([
-    fetchReportRows(employeesQuery.order("id")),
-    fetchReportRows(scopeByBranch(auth.supabase.from("time_entries").select("*").gte("entry_date", startDate).lte("entry_date", endDate).order("id"), auth.context, "branch_id")),
+    fetchReportRows<EmployeeWithBranch>(employeesQuery.order("id")),
+    fetchReportRows<TimeEntry>(scopeByBranch(auth.supabase.from("time_entries").select("*").gte("entry_date", startDate).lte("entry_date", endDate).order("id"), auth.context, "branch_id")),
     fetchReportRows(scopeByBranch(auth.supabase.from("absence_justifications").select("*").gte("absence_date", startDate).lte("absence_date", endDate).order("id"), auth.context, "branch_id")),
   ]);
   const settings = await getSystemSettings(auth.supabase);
   const { schedules, holidays } = await fetchScheduleContext({
     supabase: auth.supabase,
-    employeeIds: employees.map((employee: any) => employee.id),
-    branchIds: [...new Set(employees.map((employee: any) => employee.branch_id))] as string[],
+    employeeIds: employees.map((employee) => employee.id),
+    branchIds: [...new Set(employees.map((employee) => employee.branch_id))] as string[],
     startDate,
     endDate
   });
   let rows = buildAbsenceReport({
-    employees: employees as any,
-    entries: entries as any,
+    employees,
+    entries,
     justifications,
     schedules,
     holidays,
@@ -493,29 +533,29 @@ async function loadAbsenceRows(auth: Awaited<ReturnType<typeof requireAdmin>> & 
   return rows.filter((row) => row.expected_work_day || row.absence_status !== "not_absent");
 }
 
-async function loadEmployeeReportRows(auth: Awaited<ReturnType<typeof requireAdmin>> & any, params: URLSearchParams) {
+async function loadEmployeeReportRows(auth: AdminAuthSuccess, params: URLSearchParams) {
   const startDate = params.get("startDate") || new Date().toISOString().slice(0, 8) + "01";
   const endDate = params.get("endDate") || new Date().toISOString().slice(0, 10);
   const [employeeRows, entryRows, justificationRows, overtimeRows, payrollRows] = await Promise.all([
-    fetchReportRows(scopeByBranch(auth.supabase.from("employees").select("id, full_name, role, employment_type, branch_id, branches:branches!employees_branch_id_fkey(name)").eq("active", true).order("id"), auth.context, "branch_id")),
-    fetchReportRows(scopeByBranch(auth.supabase.from("time_entries").select("*").gte("entry_date", startDate).lte("entry_date", endDate).order("id"), auth.context, "branch_id")),
-    fetchReportRows(scopeByBranch(auth.supabase.from("absence_justifications").select("*").gte("absence_date", startDate).lte("absence_date", endDate).order("id"), auth.context, "branch_id")),
-    fetchReportRows(scopeByBranch(auth.supabase.from("overtime_reviews").select("*").gte("entry_date", startDate).lte("entry_date", endDate).order("id"), auth.context, "branch_id")),
-    fetchReportRows(scopeByBranch(auth.supabase.from("payroll_items").select("*, payroll_periods!inner(start_date,end_date,status)").gte("payroll_periods.start_date", startDate).lte("payroll_periods.end_date", endDate).order("id"), auth.context, "branch_id")),
+    fetchReportRows<EmployeeSummaryRow>(scopeByBranch(auth.supabase.from("employees").select("id, full_name, role, employment_type, branch_id, branches:branches!employees_branch_id_fkey(name)").eq("active", true).order("id"), auth.context, "branch_id")),
+    fetchReportRows<TimeEntry>(scopeByBranch(auth.supabase.from("time_entries").select("*").gte("entry_date", startDate).lte("entry_date", endDate).order("id"), auth.context, "branch_id")),
+    fetchReportRows<JustificationStatusRow>(scopeByBranch(auth.supabase.from("absence_justifications").select("*").gte("absence_date", startDate).lte("absence_date", endDate).order("id"), auth.context, "branch_id")),
+    fetchReportRows<OvertimeReviewRow>(scopeByBranch(auth.supabase.from("overtime_reviews").select("*").gte("entry_date", startDate).lte("entry_date", endDate).order("id"), auth.context, "branch_id")),
+    fetchReportRows<PayrollItemPeriodRow>(scopeByBranch(auth.supabase.from("payroll_items").select("*, payroll_periods!inner(start_date,end_date,status)").gte("payroll_periods.start_date", startDate).lte("payroll_periods.end_date", endDate).order("id"), auth.context, "branch_id")),
   ]);
   let employees = employeeRows;
-  if (params.get("employeeId")) employees = employees.filter((employee: any) => employee.id === params.get("employeeId"));
-  if (params.get("branchId")) employees = employees.filter((employee: any) => employee.branch_id === params.get("branchId"));
-  if (params.get("role")) employees = employees.filter((employee: any) => String(employee.role || "").toLowerCase().includes(String(params.get("role")).toLowerCase()));
-  if (params.get("employmentType")) employees = employees.filter((employee: any) => employee.employment_type === params.get("employmentType"));
+  if (params.get("employeeId")) employees = employees.filter((employee) => employee.id === params.get("employeeId"));
+  if (params.get("branchId")) employees = employees.filter((employee) => employee.branch_id === params.get("branchId"));
+  if (params.get("role")) employees = employees.filter((employee) => String(employee.role || "").toLowerCase().includes(String(params.get("role")).toLowerCase()));
+  if (params.get("employmentType")) employees = employees.filter((employee) => employee.employment_type === params.get("employmentType"));
 
-  return employees.map((employee: any) => {
-    const entries = entryRows.filter((entry: any) => entry.employee_id === employee.id);
-    const justifications = justificationRows.filter((item: any) => item.employee_id === employee.id);
-    const overtime = overtimeRows.filter((item: any) => item.employee_id === employee.id);
-    const payrollItems = payrollRows.filter((item: any) => item.employee_id === employee.id);
+  return employees.map((employee) => {
+    const entries = entryRows.filter((entry) => entry.employee_id === employee.id);
+    const justifications = justificationRows.filter((item) => item.employee_id === employee.id);
+    const overtime = overtimeRows.filter((item) => item.employee_id === employee.id);
+    const payrollItems = payrollRows.filter((item) => item.employee_id === employee.id);
     const payroll = payrollItems.reduce(
-      (acc: any, item: any) => ({
+      (acc, item) => ({
         final_amount: acc.final_amount + Number(item.final_amount || 0),
         absence_discount_amount: acc.absence_discount_amount + Number(item.absence_discount_amount || 0),
         overtime_amount: acc.overtime_amount + Number(item.overtime_amount || 0),
@@ -527,11 +567,11 @@ async function loadEmployeeReportRows(auth: Awaited<ReturnType<typeof requireAdm
       }),
       { final_amount: 0, absence_discount_amount: 0, overtime_amount: 0, extra_day_amount: 0, identified_absences: 0, approved_absences: 0, rejected_absences: 0, pending_absences: 0 }
     );
-    const late = entries.reduce((sum: number, entry: any) => sum + Number(entry.late_minutes || 0), 0);
-    const early = entries.reduce((sum: number, entry: any) => sum + Number(entry.early_leave_minutes || 0), 0);
-    const calculatedOvertime = overtime.reduce((sum: number, item: any) => sum + Number(item.calculated_overtime_minutes || item.overtime_minutes || 0), 0);
-    const approvedOvertime = overtime.reduce((sum: number, item: any) => sum + Number(item.approved_overtime_minutes || (item.status === "approved" || item.status === "adjusted" ? item.overtime_minutes : 0) || 0), 0);
-    const occurrenceCount = entries.filter((entry: any) => entry.status !== "valid" || entry.late_minutes > 0 || entry.early_leave_minutes > 0 || !entry.inside_allowed_radius).length;
+    const late = entries.reduce((sum, entry) => sum + Number(entry.late_minutes || 0), 0);
+    const early = entries.reduce((sum, entry) => sum + Number(entry.early_leave_minutes || 0), 0);
+    const calculatedOvertime = overtime.reduce((sum, item) => sum + Number(item.calculated_overtime_minutes || item.overtime_minutes || 0), 0);
+    const approvedOvertime = overtime.reduce((sum, item) => sum + Number(item.approved_overtime_minutes || (item.status === "approved" || item.status === "adjusted" ? item.overtime_minutes : 0) || 0), 0);
+    const occurrenceCount = entries.filter((entry) => entry.status !== "valid" || Number(entry.late_minutes || 0) > 0 || Number(entry.early_leave_minutes || 0) > 0 || !entry.inside_allowed_radius).length;
     return {
       employee_id: employee.id,
       employee_name: employee.full_name,
@@ -543,9 +583,9 @@ async function loadEmployeeReportRows(auth: Awaited<ReturnType<typeof requireAdm
       total_late_minutes: late,
       total_early_leave_minutes: early,
       identified_absences: payroll.identified_absences,
-      approved_absences: payroll.approved_absences + justifications.filter((item: any) => item.status === "approved").length,
-      rejected_absences: payroll.rejected_absences + justifications.filter((item: any) => item.status === "rejected").length,
-      pending_absences: payroll.pending_absences + justifications.filter((item: any) => item.status === "pending").length,
+      approved_absences: payroll.approved_absences + justifications.filter((item) => item.status === "approved").length,
+      rejected_absences: payroll.rejected_absences + justifications.filter((item) => item.status === "rejected").length,
+      pending_absences: payroll.pending_absences + justifications.filter((item) => item.status === "pending").length,
       calculated_overtime_minutes: calculatedOvertime,
       approved_overtime_minutes: approvedOvertime,
       absence_discount_amount: payroll.absence_discount_amount,
@@ -557,29 +597,32 @@ async function loadEmployeeReportRows(auth: Awaited<ReturnType<typeof requireAdm
   });
 }
 
-async function loadBranchReportRows(auth: Awaited<ReturnType<typeof requireAdmin>> & any, params: URLSearchParams) {
+type BranchSummaryRow = { id: string; name: string; type: string | null; address: string | null; active: boolean };
+type EmployeeMiniRow = { id: string; full_name: string; role: string | null; branch_id: string | null; active: boolean };
+
+async function loadBranchReportRows(auth: AdminAuthSuccess, params: URLSearchParams) {
   const startDate = params.get("startDate") || new Date().toISOString().slice(0, 8) + "01";
   const endDate = params.get("endDate") || new Date().toISOString().slice(0, 10);
   const [branchRows, employeeRows, entryRows, justificationRows, overtimeRows, payrollRows] = await Promise.all([
-    fetchReportRows(scopeByBranch(auth.supabase.from("branches").select("*").eq("active", true).order("id"), auth.context, "id")),
-    fetchReportRows(scopeByBranch(auth.supabase.from("employees").select("id, full_name, role, branch_id, active").eq("active", true).order("id"), auth.context, "branch_id")),
-    fetchReportRows(scopeByBranch(auth.supabase.from("time_entries").select("*").gte("entry_date", startDate).lte("entry_date", endDate).order("id"), auth.context, "branch_id")),
-    fetchReportRows(scopeByBranch(auth.supabase.from("absence_justifications").select("*").gte("absence_date", startDate).lte("absence_date", endDate).order("id"), auth.context, "branch_id")),
-    fetchReportRows(scopeByBranch(auth.supabase.from("overtime_reviews").select("*, employees(full_name)").gte("entry_date", startDate).lte("entry_date", endDate).order("id"), auth.context, "branch_id")),
-    fetchReportRows(scopeByBranch(auth.supabase.from("payroll_items").select("*, payroll_periods!inner(start_date,end_date,status)").gte("payroll_periods.start_date", startDate).lte("payroll_periods.end_date", endDate).order("id"), auth.context, "branch_id")),
+    fetchReportRows<BranchSummaryRow>(scopeByBranch(auth.supabase.from("branches").select("*").eq("active", true).order("id"), auth.context, "id")),
+    fetchReportRows<EmployeeMiniRow>(scopeByBranch(auth.supabase.from("employees").select("id, full_name, role, branch_id, active").eq("active", true).order("id"), auth.context, "branch_id")),
+    fetchReportRows<TimeEntry>(scopeByBranch(auth.supabase.from("time_entries").select("*").gte("entry_date", startDate).lte("entry_date", endDate).order("id"), auth.context, "branch_id")),
+    fetchReportRows<JustificationStatusRow>(scopeByBranch(auth.supabase.from("absence_justifications").select("*").gte("absence_date", startDate).lte("absence_date", endDate).order("id"), auth.context, "branch_id")),
+    fetchReportRows<OvertimeReviewRow>(scopeByBranch(auth.supabase.from("overtime_reviews").select("*, employees(full_name)").gte("entry_date", startDate).lte("entry_date", endDate).order("id"), auth.context, "branch_id")),
+    fetchReportRows<PayrollItemPeriodRow>(scopeByBranch(auth.supabase.from("payroll_items").select("*, payroll_periods!inner(start_date,end_date,status)").gte("payroll_periods.start_date", startDate).lte("payroll_periods.end_date", endDate).order("id"), auth.context, "branch_id")),
   ]);
   let branches = branchRows;
-  if (params.get("branchId")) branches = branches.filter((branch: any) => branch.id === params.get("branchId"));
-  return branches.map((branch: any) => {
-    const employees = employeeRows.filter((employee: any) => employee.branch_id === branch.id);
-    const entries = entryRows.filter((entry: any) => entry.branch_id === branch.id);
-    const justifications = justificationRows.filter((item: any) => item.branch_id === branch.id);
-    const overtime = overtimeRows.filter((item: any) => item.branch_id === branch.id);
-    const payroll = payrollRows.filter((item: any) => item.branch_id === branch.id);
+  if (params.get("branchId")) branches = branches.filter((branch) => branch.id === params.get("branchId"));
+  return branches.map((branch) => {
+    const employees = employeeRows.filter((employee) => employee.branch_id === branch.id);
+    const entries = entryRows.filter((entry) => entry.branch_id === branch.id);
+    const justifications = justificationRows.filter((item) => item.branch_id === branch.id);
+    const overtime = overtimeRows.filter((item) => item.branch_id === branch.id);
+    const payroll = payrollRows.filter((item) => item.branch_id === branch.id);
     const occurrenceByEmployee = new Map<string, { name: string; count: number }>();
-    entries.forEach((entry: any) => {
-      if (entry.status !== "valid" || entry.late_minutes > 0 || entry.early_leave_minutes > 0 || !entry.inside_allowed_radius) {
-        const employee = employees.find((item: any) => item.id === entry.employee_id);
+    entries.forEach((entry) => {
+      if (entry.status !== "valid" || Number(entry.late_minutes || 0) > 0 || Number(entry.early_leave_minutes || 0) > 0 || !entry.inside_allowed_radius) {
+        const employee = employees.find((item) => item.id === entry.employee_id);
         const current = occurrenceByEmployee.get(entry.employee_id) || { name: employee?.full_name || entry.employee_id, count: 0 };
         current.count += 1;
         occurrenceByEmployee.set(entry.employee_id, current);
@@ -597,23 +640,28 @@ async function loadBranchReportRows(auth: Awaited<ReturnType<typeof requireAdmin
       address: branch.address,
       active_employees: employees.length,
       total_points: entries.length,
-      identified_absences: payroll.reduce((sum: number, item: any) => sum + Number(item.identified_absences || item.discounted_absences || 0), 0),
-      approved_absences: payroll.reduce((sum: number, item: any) => sum + Number(item.approved_absences || 0), 0),
-      rejected_absences: payroll.reduce((sum: number, item: any) => sum + Number(item.rejected_absences || 0), 0),
-      total_late_minutes: entries.reduce((sum: number, item: any) => sum + Number(item.late_minutes || 0), 0),
-      total_early_leave_minutes: entries.reduce((sum: number, item: any) => sum + Number(item.early_leave_minutes || 0), 0),
-      approved_overtime_minutes: overtime.reduce((sum: number, item: any) => sum + Number(item.approved_overtime_minutes || (item.status === "approved" || item.status === "adjusted" ? item.overtime_minutes : 0) || 0), 0),
-      pending_justifications: justifications.filter((item: any) => item.status === "pending").length,
-      inconsistencies: entries.filter((entry: any) => entry.status !== "valid" || entry.occurrence_review_status === "pending_review" || !entry.inside_allowed_radius).length,
-      total_occurrences: entries.filter((entry: any) => entry.status !== "valid" || entry.late_minutes > 0 || entry.early_leave_minutes > 0 || !entry.inside_allowed_radius).length,
-      payroll_total: payroll.reduce((sum: number, item: any) => sum + Number(item.final_amount || 0), 0),
+      identified_absences: payroll.reduce((sum, item) => sum + Number(item.identified_absences || item.discounted_absences || 0), 0),
+      approved_absences: payroll.reduce((sum, item) => sum + Number(item.approved_absences || 0), 0),
+      rejected_absences: payroll.reduce((sum, item) => sum + Number(item.rejected_absences || 0), 0),
+      total_late_minutes: entries.reduce((sum, item) => sum + Number(item.late_minutes || 0), 0),
+      total_early_leave_minutes: entries.reduce((sum, item) => sum + Number(item.early_leave_minutes || 0), 0),
+      approved_overtime_minutes: overtime.reduce((sum, item) => sum + Number(item.approved_overtime_minutes || (item.status === "approved" || item.status === "adjusted" ? item.overtime_minutes : 0) || 0), 0),
+      pending_justifications: justifications.filter((item) => item.status === "pending").length,
+      inconsistencies: entries.filter((entry) => entry.status !== "valid" || entry.occurrence_review_status === "pending_review" || !entry.inside_allowed_radius).length,
+      total_occurrences: entries.filter((entry) => entry.status !== "valid" || Number(entry.late_minutes || 0) > 0 || Number(entry.early_leave_minutes || 0) > 0 || !entry.inside_allowed_radius).length,
+      payroll_total: payroll.reduce((sum, item) => sum + Number(item.final_amount || 0), 0),
       ranking
     };
   });
 }
 
 
-async function loadLunchReportRows(auth: Awaited<ReturnType<typeof requireAdmin>> & any, params: URLSearchParams) {
+type LunchEntryRow = TimeEntry & {
+  employees?: { full_name?: string; expected_lunch_start_time?: string; expected_lunch_end_time?: string; expected_lunch_minutes?: number } | null;
+  branches?: { name?: string } | null;
+};
+
+async function loadLunchReportRows(auth: AdminAuthSuccess, params: URLSearchParams) {
   const startDate = params.get("startDate") || new Date().toISOString().slice(0, 8) + "01";
   const endDate = params.get("endDate") || new Date().toISOString().slice(0, 10);
   let query = scopeByBranch(auth.supabase
@@ -626,9 +674,9 @@ async function loadLunchReportRows(auth: Awaited<ReturnType<typeof requireAdmin>
     .order("id"), auth.context, "branch_id");
   if (params.get("branchId")) query = query.eq("branch_id", params.get("branchId"));
   if (params.get("employeeId")) query = query.eq("employee_id", params.get("employeeId"));
-  const data = await fetchReportRows(query);
-  const groups = new Map<string, any[]>();
-  (data || []).forEach((entry: any) => {
+  const data = await fetchReportRows<LunchEntryRow>(query);
+  const groups = new Map<string, LunchEntryRow[]>();
+  (data || []).forEach((entry) => {
     const key = `${entry.employee_id}:${entry.entry_date}`;
     groups.set(key, [...(groups.get(key) || []), entry]);
   });
@@ -677,13 +725,13 @@ export async function GET(request: NextRequest) {
     let data: any[] = [];
 
     if (type === "absences") {
-      data = await loadAbsenceRows(auth as any, params);
+      data = await loadAbsenceRows(auth, params);
     } else if (type === "employee") {
-      data = await loadEmployeeReportRows(auth as any, params);
+      data = await loadEmployeeReportRows(auth, params);
     } else if (type === "lunch") {
-      data = await loadLunchReportRows(auth as any, params);
+      data = await loadLunchReportRows(auth, params);
     } else if (type === "branch" || type === "executive") {
-      data = await loadBranchReportRows(auth as any, params);
+      data = await loadBranchReportRows(auth, params);
     } else if (["points", "late", "early_leave"].includes(type)) {
       let query = scopeByBranch(auth.supabase
         .from("time_entries")
@@ -721,10 +769,10 @@ export async function GET(request: NextRequest) {
       if (params.get("employeeId")) query = query.eq("employee_id", params.get("employeeId"));
       if (params.get("startDate")) query = query.gte("entry_date", params.get("startDate"));
       if (params.get("endDate")) query = query.lte("entry_date", params.get("endDate"));
-      const rows = await fetchReportRows(query);
-      data = analyzeInconsistencies(rows as any).map((item) => ({
+      const rows = await fetchReportRows<TimeEntry & { employees?: { full_name?: string; role?: string } | null; branches?: { name?: string } | null }>(query);
+      data = analyzeInconsistencies(rows).map((item) => ({
         ...item,
-        employee_name: rows.find((entry: any) => entry.id === item.entry_id)?.employees?.full_name || item.employee_id
+        employee_name: rows.find((entry) => entry.id === item.entry_id)?.employees?.full_name || item.employee_id
       }));
     } else {
       let query = scopeByBranch(auth.supabase.from("payroll_items").select("*, payroll_periods!inner(title,start_date,end_date,status,payment_day,branch_id)").order("employee_name", { ascending: true }).order("id"), auth.context, "branch_id");

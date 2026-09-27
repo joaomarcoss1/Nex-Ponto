@@ -13,6 +13,14 @@ import { pendingHolidayDecisions } from "@/lib/services/holiday-operations";
 import { payrollCreateSchema, payrollStatusSchema, zodErrorMessage } from "@/lib/validation/schemas";
 import { fetchAllRows } from "@/lib/server/pagination";
 
+// This helper and the three below it (countIncompleteEntryDays,
+// groupByEmployeeId, resolveSalarySnapshot) are used exclusively by
+// _legacyPostReadOnlyPreserved/_legacyPatchReadOnlyPreserved further down —
+// the pre-v5.1 payroll generation logic, kept only for reference/rollback
+// after POST/PATCH were hard-disabled (see the comment on those exports).
+// It cannot execute from any live route, so the remaining `any` usage here
+// is left as-is rather than typed: there's no request path left for a typing
+// mistake to hide a real bug behind.
 function buildPayrollIdempotencyKey(body: any) {
   const normalized = {
     branch_id: body.branch_id || "all",
@@ -151,7 +159,7 @@ export async function GET(request: NextRequest) {
   const { data: periods, error } = await periodsQuery;
   if (error) return fail("Erro ao listar folhas.", 500, error.message);
 
-  let items: any[] = [];
+  let items: Record<string, unknown>[] = [];
   if (id) {
     const itemQuery = scopeByBranch(auth.supabase
       .from("payroll_items")
