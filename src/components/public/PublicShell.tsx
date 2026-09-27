@@ -23,12 +23,15 @@ export function PublicShell({
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[var(--background,#f5f7fb)] px-3 pb-32 sm:px-4">
       <section className="absolute inset-x-0 top-0 h-72 overflow-hidden bg-brand-700">
-        {/* Decorative shapes are anchored to a centered box matching the card's own
-            width (not the full viewport) so they stay balanced around the card
-            instead of drifting off to the screen edges on wide viewports. */}
+        {/* The circle and wave are sized off the full banner (viewport) width, not
+            the narrower card width, so the banner reads as one consistent shape
+            on any screen instead of a card-width patch sitting inside a much
+            wider plain-blue rectangle (the "crooked" seam on desktop widths). */}
+        <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-brand-500/60" />
+        <div className="absolute -bottom-24 inset-x-[-15%] h-48 rounded-[50%] bg-[var(--background,#f5f7fb)]" />
+        {/* The accent bar stays aligned with the card underneath, so it keeps its
+            own centered box matching the card's width. */}
         <div className="relative mx-auto h-full" style={{ width: "min(36rem, calc(100vw - 1.5rem))" }}>
-          <div className="absolute -right-24 -top-28 h-72 w-72 rounded-full bg-brand-500/60" />
-          <div className="absolute -bottom-24 left-0 h-48 w-[130%] rounded-[50%] bg-[var(--background,#f5f7fb)]" />
           <div className="absolute bottom-4 left-8 h-1.5 w-28 rounded-full bg-sun-400" />
         </div>
       </section>

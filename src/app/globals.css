@@ -102,10 +102,6 @@ a {
 
 .public-clock-flow > * {
   width: 100%;
-  max-width: min(100%, 21rem);
-}
-
-.public-clock-flow > section {
   max-width: 100%;
 }
 
