@@ -23,9 +23,14 @@ export function PublicShell({
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[var(--background,#f5f7fb)] px-3 pb-32 sm:px-4">
       <section className="absolute inset-x-0 top-0 h-72 overflow-hidden bg-brand-700">
-        <div className="absolute -right-24 -top-28 h-72 w-72 rounded-full bg-brand-500/60" />
-        <div className="absolute -bottom-24 left-0 h-48 w-[130%] rounded-[50%] bg-[var(--background,#f5f7fb)]" />
-        <div className="absolute bottom-4 left-8 h-1.5 w-28 rounded-full bg-sun-400" />
+        {/* Decorative shapes are anchored to a centered box matching the card's own
+            width (not the full viewport) so they stay balanced around the card
+            instead of drifting off to the screen edges on wide viewports. */}
+        <div className="relative mx-auto h-full" style={{ width: "min(36rem, calc(100vw - 1.5rem))" }}>
+          <div className="absolute -right-24 -top-28 h-72 w-72 rounded-full bg-brand-500/60" />
+          <div className="absolute -bottom-24 left-0 h-48 w-[130%] rounded-[50%] bg-[var(--background,#f5f7fb)]" />
+          <div className="absolute bottom-4 left-8 h-1.5 w-28 rounded-full bg-sun-400" />
+        </div>
       </section>
 
       <div className="public-shell-wrap relative mx-auto grid min-h-screen content-start gap-5 pt-7" style={{ width: "min(36rem, calc(100vw - 1.5rem))" }}>

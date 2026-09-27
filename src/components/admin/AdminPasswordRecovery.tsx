@@ -57,8 +57,12 @@ export function AdminPasswordRecovery() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f5f7f6] px-4 py-8">
       <section className="absolute inset-x-0 top-0 h-72 overflow-hidden bg-brand-700">
-        <div className="absolute -right-24 -top-28 h-72 w-72 rounded-full bg-brand-500/60" />
-        <div className="absolute -bottom-24 left-0 h-48 w-[130%] rounded-[50%] bg-[#f5f7f6]" />
+        {/* Anchored to the same centered width as the card below instead of the
+            full viewport, so it stays balanced around the card on wide screens. */}
+        <div className="relative mx-auto h-full max-w-md">
+          <div className="absolute -right-24 -top-28 h-72 w-72 rounded-full bg-brand-500/60" />
+          <div className="absolute -bottom-24 left-0 h-48 w-[130%] rounded-[50%] bg-[#f5f7f6]" />
+        </div>
       </section>
       <div className="relative z-10 mx-auto grid min-h-screen max-w-md content-start gap-8 pt-4">
         <div className="flex items-center justify-between">

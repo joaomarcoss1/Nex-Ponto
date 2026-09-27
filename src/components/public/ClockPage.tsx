@@ -17,6 +17,12 @@ import type { PublicEmployee, TimeAction, TimeEntryStatus } from "@/types/domain
 type BranchOption = { id: string; name: string; type: string };
 type GeoState = "idle" | "searching" | "inside" | "outside" | "denied";
 
+const devicePolicyLabels: Record<string, string> = {
+  free: "livre",
+  monitored: "monitorada",
+  required: "obrigatória",
+};
+
 function getPosition(): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
@@ -317,7 +323,7 @@ export function ClockPage() {
         ) : null}
         {deviceState ? (
           <p className="rounded-2xl border border-brand-100 bg-brand-50 p-3 text-xs font-bold text-brand-900">
-            Dispositivo {deviceState.status === "active" ? "autorizado" : "monitorado"} • política {deviceState.mode}
+            Dispositivo {deviceState.status === "active" ? "autorizado" : "monitorado"} • política {devicePolicyLabels[deviceState.mode] || deviceState.mode}
           </p>
         ) : null}
         <EmployeeSearch selected={employee} onSelect={setEmployee} branchId={branchId} />
