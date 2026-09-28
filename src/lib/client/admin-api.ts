@@ -5,6 +5,7 @@ import {
   loadBrowserSupabaseConfig,
 } from "@/lib/client/supabase";
 import { apiErrorFromPayload } from "@/lib/client/api-error";
+import { classifyAdminAuthFailure } from "@/lib/client/admin-auth-state";
 
 type CacheEntry = {
   expiresAt: number;
@@ -37,6 +38,27 @@ function shouldUseCache(path: string, init: RequestInit) {
   return true;
 }
 
+let redirectingToLogin = false;
+
+function redirectToAdminLogin() {
+  if (redirectingToLogin || typeof window === "undefined") return;
+  redirectingToLogin = true;
+  window.sessionStorage.removeItem("nexponto_admin_profile");
+  window.sessionStorage.removeItem("nexponto_admin_profile_cached_at");
+  clearAdminApiCache();
+  if (!window.location.pathname.startsWith("/admin/login")) {
+    window.location.href = "/admin/login";
+  }
+}
+
+function throwAdminApiError(payload: unknown, status: number, fallback: string): never {
+  const apiError = apiErrorFromPayload(payload, status, fallback);
+  if (classifyAdminAuthFailure(apiError.status, apiError.code) === "login") {
+    redirectToAdminLogin();
+  }
+  throw apiError;
+}
+
 export function clearAdminApiCache(prefix?: string) {
   if (!prefix) {
     adminMemoryCache.clear();
@@ -66,7 +88,8 @@ async function getAdminAccessToken() {
 
   if (!session?.access_token) {
     cachedAccessToken = null;
-    throw new Error("Sessão administrativa expirada. Entre novamente.");
+    redirectToAdminLogin();
+    throw new Error("Sessão administrativa expirada. Redirecionando para o login...");
   }
 
   cachedAccessToken = {
@@ -120,7 +143,7 @@ export async function adminFetch<T>(
         ? await response.json()
         : await response.text();
       if (!response.ok) {
-        throw apiErrorFromPayload(data, response.status, "Não foi possível concluir a operação administrativa.");
+        throwAdminApiError(data, response.status, "Não foi possível concluir a operação administrativa.");
       }
 
       if (cacheable) {
@@ -177,8 +200,10 @@ export async function downloadAdminFile(path: string, filename: string) {
   const {
     data: { session },
   } = await getBrowserAdminSession();
-  if (!session?.access_token)
-    throw new Error("Sessão administrativa expirada.");
+  if (!session?.access_token) {
+    redirectToAdminLogin();
+    throw new Error("Sessão administrativa expirada. Redirecionando para o login...");
+  }
 
   const response = await fetchAdminDownload(path, {
     headers: {
@@ -189,7 +214,7 @@ export async function downloadAdminFile(path: string, filename: string) {
     const contentType = response.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const payload = await response.json().catch(() => null);
-      throw apiErrorFromPayload(payload, response.status, "Não foi possível gerar o arquivo.");
+      throwAdminApiError(payload, response.status, "Não foi possível gerar o arquivo.");
     }
     const text = await response.text().catch(() => "");
     throw new Error(text || "Não foi possível gerar o arquivo.");
@@ -219,8 +244,10 @@ export async function downloadAdminPostFile(
   const {
     data: { session },
   } = await getBrowserAdminSession();
-  if (!session?.access_token)
-    throw new Error("Sessão administrativa expirada.");
+  if (!session?.access_token) {
+    redirectToAdminLogin();
+    throw new Error("Sessão administrativa expirada. Redirecionando para o login...");
+  }
 
   const response = await fetchAdminDownload(path, {
     method: "POST",
@@ -234,7 +261,7 @@ export async function downloadAdminPostFile(
     const contentType = response.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const payload = await response.json().catch(() => null);
-      throw apiErrorFromPayload(payload, response.status, "Não foi possível gerar o arquivo.");
+      throwAdminApiError(payload, response.status, "Não foi possível gerar o arquivo.");
     }
     throw new Error(
       (await response.text().catch(() => "")) ||
