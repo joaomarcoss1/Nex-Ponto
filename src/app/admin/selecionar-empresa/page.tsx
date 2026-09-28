@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { adminFetch, clearAdminApiCache } from "@/lib/client/admin-api";
-import { createBrowserSupabaseClient } from "@/lib/client/supabase";
 
 type TenantOption = { id: string; name: string; slug: string; role: string; status: string; selected: boolean; onboardingStatus?: string };
 
@@ -42,8 +41,8 @@ export default function SelectTenantPage() {
   }
 
   async function signOut() {
-    const supabase = await createBrowserSupabaseClient();
-    await supabase.auth.signOut();
+    clearAdminApiCache();
+    await fetch("/api/auth/admin-logout", { method: "POST", cache: "no-store" }).catch(() => undefined);
     router.replace("/admin/login");
   }
 

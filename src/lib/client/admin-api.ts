@@ -1,9 +1,5 @@
 "use client";
 
-import {
-  getBrowserAdminSession,
-  loadBrowserSupabaseConfig,
-} from "@/lib/client/supabase";
 import { apiErrorFromPayload } from "@/lib/client/api-error";
 import { classifyAdminAuthFailure } from "@/lib/client/admin-auth-state";
 
@@ -14,7 +10,6 @@ type CacheEntry = {
 
 const adminMemoryCache = new Map<string, CacheEntry>();
 const adminInFlightRequests = new Map<string, Promise<unknown>>();
-let cachedAccessToken: { token: string; expiresAt: number } | null = null;
 const DEFAULT_GET_CACHE_MS = 45_000;
 const STATIC_OPTIONS_CACHE_MS = 5 * 60_000;
 
@@ -46,24 +41,16 @@ function redirectToAdminLogin() {
   window.sessionStorage.removeItem("nexponto_admin_profile");
   window.sessionStorage.removeItem("nexponto_admin_profile_cached_at");
   clearAdminApiCache();
+  fetch("/api/auth/admin-logout", { method: "POST", cache: "no-store" }).catch(() => undefined);
   if (!window.location.pathname.startsWith("/admin/login")) {
     window.location.href = "/admin/login";
   }
-}
-
-function throwAdminApiError(payload: unknown, status: number, fallback: string): never {
-  const apiError = apiErrorFromPayload(payload, status, fallback);
-  if (classifyAdminAuthFailure(apiError.status, apiError.code) === "login") {
-    redirectToAdminLogin();
-  }
-  throw apiError;
 }
 
 export function clearAdminApiCache(prefix?: string) {
   if (!prefix) {
     adminMemoryCache.clear();
     adminInFlightRequests.clear();
-    cachedAccessToken = null;
     return;
   }
   [...adminMemoryCache.keys()].forEach((key) => {
@@ -75,28 +62,46 @@ export function prefetchAdmin(path: string) {
   adminFetch(path).catch(() => undefined);
 }
 
-async function getAdminAccessToken() {
-  await loadBrowserSupabaseConfig({ retries: 1 });
+let refreshInFlight: Promise<boolean> | null = null;
 
-  if (cachedAccessToken && cachedAccessToken.expiresAt > Date.now() + 30_000) {
-    return cachedAccessToken.token;
+/** One shared refresh attempt even if several requests 401 at once. */
+function refreshAdminSession(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = fetch("/api/auth/admin-refresh", { method: "POST", cache: "no-store" })
+      .then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
+}
+
+async function rawAdminFetch(path: string, init: RequestInit) {
+  const headers = new Headers(init.headers);
+  if (!(init.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
   }
 
-  const {
-    data: { session },
-  } = await getBrowserAdminSession();
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 30_000);
+  const externalSignal = init.signal;
+  const abortFromExternal = () => controller.abort();
+  externalSignal?.addEventListener("abort", abortFromExternal, { once: true });
 
-  if (!session?.access_token) {
-    cachedAccessToken = null;
-    redirectToAdminLogin();
-    throw new Error("Sessão administrativa expirada. Redirecionando para o login...");
+  try {
+    // The admin session lives in an httpOnly cookie, sent automatically on
+    // this same-origin request — no token for client JS to hold or attach.
+    return await fetch(path, { ...init, headers, signal: controller.signal, cache: "no-store" });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("A operação demorou demais. Verifique a conexão e tente novamente.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+    externalSignal?.removeEventListener("abort", abortFromExternal);
   }
-
-  cachedAccessToken = {
-    token: session.access_token,
-    expiresAt: session.expires_at ? session.expires_at * 1000 : Date.now() + 4 * 60_000,
-  };
-  return session.access_token;
 }
 
 export async function adminFetch<T>(
@@ -117,53 +122,39 @@ export async function adminFetch<T>(
   }
 
   const requestPromise = (async () => {
-    const token = await getAdminAccessToken();
-    const headers = new Headers(init.headers);
-    headers.set("Authorization", `Bearer ${token}`);
-    if (!(init.body instanceof FormData) && !headers.has("Content-Type")) {
-      headers.set("Content-Type", "application/json");
+    let response = await rawAdminFetch(path, init);
+
+    if (response.status === 401 && !redirectingToLogin) {
+      const probePayload = await response.clone().json().catch(() => null);
+      const probeCode = probePayload?.error?.code || probePayload?.code;
+      // Only an expired-access-token style 401 is worth a silent retry — not
+      // "no session at all" or "MFA required", which a refresh can't fix.
+      if (probeCode === "AUTH_SESSION_INVALID" && (await refreshAdminSession())) {
+        response = await rawAdminFetch(path, init);
+      }
     }
 
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 30_000);
-    const externalSignal = init.signal;
-    const abortFromExternal = () => controller.abort();
-    externalSignal?.addEventListener("abort", abortFromExternal, { once: true });
+    const contentType = response.headers.get("content-type") || "";
+    const data = contentType.includes("application/json")
+      ? await response.json()
+      : await response.text();
+    if (!response.ok) {
+      const apiError = apiErrorFromPayload(data, response.status, "Não foi possível concluir a operação administrativa.");
+      if (classifyAdminAuthFailure(apiError.status, apiError.code) === "login") {
+        redirectToAdminLogin();
+      }
+      throw apiError;
+    }
 
-    try {
-      const response = await fetch(path, {
-        ...init,
-        headers,
-        signal: controller.signal,
-        cache: "no-store",
+    if (cacheable) {
+      adminMemoryCache.set(cacheKey, {
+        value: data,
+        expiresAt: Date.now() + cacheTtlFor(path),
       });
-
-      const contentType = response.headers.get("content-type") || "";
-      const data = contentType.includes("application/json")
-        ? await response.json()
-        : await response.text();
-      if (!response.ok) {
-        throwAdminApiError(data, response.status, "Não foi possível concluir a operação administrativa.");
-      }
-
-      if (cacheable) {
-        adminMemoryCache.set(cacheKey, {
-          value: data,
-          expiresAt: Date.now() + cacheTtlFor(path),
-        });
-      } else if (method !== "GET") {
-        clearAdminApiCache();
-      }
-      return data as T;
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        throw new Error("A operação demorou demais. Verifique a conexão e tente novamente.");
-      }
-      throw error;
-    } finally {
-      window.clearTimeout(timeout);
-      externalSignal?.removeEventListener("abort", abortFromExternal);
+    } else if (method !== "GET") {
+      clearAdminApiCache();
     }
+    return data as T;
   })();
 
   if (cacheable) adminInFlightRequests.set(cacheKey, requestPromise);
@@ -194,27 +185,21 @@ async function fetchAdminDownload(path: string, init: RequestInit, timeoutMs = 9
   }
 }
 
-export async function downloadAdminFile(path: string, filename: string) {
-  await loadBrowserSupabaseConfig({ retries: 1 });
-
-  const {
-    data: { session },
-  } = await getBrowserAdminSession();
-  if (!session?.access_token) {
+function throwDownloadApiError(payload: unknown, status: number, fallback: string): never {
+  const apiError = apiErrorFromPayload(payload, status, fallback);
+  if (classifyAdminAuthFailure(apiError.status, apiError.code) === "login") {
     redirectToAdminLogin();
-    throw new Error("Sessão administrativa expirada. Redirecionando para o login...");
   }
+  throw apiError;
+}
 
-  const response = await fetchAdminDownload(path, {
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
-  });
+export async function downloadAdminFile(path: string, filename: string) {
+  const response = await fetchAdminDownload(path, {});
   if (!response.ok) {
     const contentType = response.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const payload = await response.json().catch(() => null);
-      throwAdminApiError(payload, response.status, "Não foi possível gerar o arquivo.");
+      throwDownloadApiError(payload, response.status, "Não foi possível gerar o arquivo.");
     }
     const text = await response.text().catch(() => "");
     throw new Error(text || "Não foi possível gerar o arquivo.");
@@ -239,29 +224,16 @@ export async function downloadAdminPostFile(
   body: unknown,
   filename: string,
 ) {
-  await loadBrowserSupabaseConfig({ retries: 1 });
-
-  const {
-    data: { session },
-  } = await getBrowserAdminSession();
-  if (!session?.access_token) {
-    redirectToAdminLogin();
-    throw new Error("Sessão administrativa expirada. Redirecionando para o login...");
-  }
-
   const response = await fetchAdminDownload(path, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   if (!response.ok) {
     const contentType = response.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const payload = await response.json().catch(() => null);
-      throwAdminApiError(payload, response.status, "Não foi possível gerar o arquivo.");
+      throwDownloadApiError(payload, response.status, "Não foi possível gerar o arquivo.");
     }
     throw new Error(
       (await response.text().catch(() => "")) ||

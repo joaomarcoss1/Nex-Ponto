@@ -8,8 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ResponsiveModal } from "@/components/ui/mobile";
 import { Field, Textarea } from "@/components/ui/field";
-import { getBrowserAdminSession } from "@/lib/client/supabase";
-import { apiErrorFromPayload } from "@/lib/client/api-error";
+import { adminFetch } from "@/lib/client/admin-api";
 
 type Device = {
   id: string;
@@ -28,23 +27,6 @@ type PrivacyRequest = {
   due_at?: string;
 };
 
-async function adminJson(path: string, init?: RequestInit) {
-  const { data } = await getBrowserAdminSession();
-  if (!data.session) throw new Error("Sessão administrativa expirada.");
-  const response = await fetch(path, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${data.session.access_token}`,
-      ...(init?.headers || {}),
-    },
-    cache: "no-store",
-  });
-  const payload = await response.json();
-  if (!response.ok) throw apiErrorFromPayload(payload, response.status, "Falha na operação.");
-  return payload;
-}
-
 export function SecurityPrivacyPage() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [requests, setRequests] = useState<PrivacyRequest[]>([]);
@@ -58,8 +40,8 @@ export function SecurityPrivacyPage() {
     setError("");
     try {
       const [devicePayload, privacyPayload] = await Promise.all([
-        adminJson("/api/admin/devices"),
-        adminJson("/api/admin/privacy-requests"),
+        adminFetch<{ devices: Device[] }>("/api/admin/devices"),
+        adminFetch<{ requests: PrivacyRequest[] }>("/api/admin/privacy-requests"),
       ]);
       setDevices(devicePayload.devices || []);
       setRequests(privacyPayload.requests || []);
@@ -78,7 +60,7 @@ export function SecurityPrivacyPage() {
     if (!deviceDecision || decisionReason.trim().length < 10 || loading) return;
     setLoading(true); setError("");
     try {
-      await adminJson("/api/admin/devices", {
+      await adminFetch("/api/admin/devices", {
         method: "PATCH",
         body: JSON.stringify({ id: deviceDecision.id, status: deviceDecision.status, reason: decisionReason.trim() }),
       });

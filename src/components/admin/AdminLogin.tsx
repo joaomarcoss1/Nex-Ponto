@@ -54,20 +54,29 @@ export function AdminLogin({ redirectTo = "/admin", platform = false }: { redire
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw apiErrorFromPayload(payload, response.status, "Não foi possível entrar.");
-      if (!payload?.session?.access_token || !payload?.session?.refresh_token) {
-        throw new Error("A sessão não foi criada corretamente. Tente novamente.");
+
+      window.sessionStorage.removeItem("nexponto_admin_profile");
+      window.sessionStorage.removeItem("nexponto_admin_profile_cached_at");
+
+      if (payload?.mfaRequired) {
+        if (!payload?.session?.access_token || !payload?.session?.refresh_token) {
+          throw new Error("A confirmação de dois fatores não pôde ser iniciada. Tente novamente.");
+        }
+        // This aal1 session only ever lives in the browser long enough to run
+        // the MFA challenge against Supabase directly — the challenge page
+        // discards it as soon as it exchanges the resulting aal2 session for
+        // the httpOnly cookie (see /api/auth/admin-mfa-complete).
+        const supabase = await createBrowserSupabaseClient();
+        const { error: sessionError } = await supabase.auth.setSession(payload.session);
+        if (sessionError) throw new Error("A sessão não pôde ser preparada. Tente novamente.");
+        router.replace(`/admin/seguranca-mfa?desafio=1&next=${encodeURIComponent(redirectTo)}`);
+        return;
       }
 
-      const supabase = await createBrowserSupabaseClient();
-      const { error: sessionError } = await supabase.auth.setSession(payload.session);
-      if (sessionError) throw new Error("A sessão não pôde ser persistida. Tente novamente.");
-
-      if (payload.user?.mustChangePassword) {
+      if (payload?.user?.mustChangePassword) {
         router.replace("/admin/nova-senha?obrigatoria=1");
         return;
       }
-      window.sessionStorage.removeItem("nexponto_admin_profile");
-      window.sessionStorage.removeItem("nexponto_admin_profile_cached_at");
       router.replace(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao entrar.");

@@ -17,6 +17,7 @@ import {
   Repeat,
   Settings,
   Shield,
+  ShieldAlert,
   TimerReset,
   UserCheck,
   UserCog,
@@ -29,12 +30,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
-import {
-  createBrowserSupabaseClient,
-  getBrowserAdminSession,
-  getBrowserSupabaseConfigStatus,
-  loadBrowserSupabaseConfig,
-} from "@/lib/client/supabase";
 import { ApiClientError, apiErrorFromPayload } from "@/lib/client/api-error";
 import { classifyAdminAuthFailure } from "@/lib/client/admin-auth-state";
 import { clearAdminApiCache } from "@/lib/client/admin-api";
@@ -325,6 +320,7 @@ type Profile = {
   permissions?: string[];
   isPlatformSuperadmin?: boolean;
   supportSession?: { id: string; reason?: string; expiresAt?: string } | null;
+  mfaEnrolled?: boolean;
 };
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -374,42 +370,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       setAuthState("checking");
       setAuthMessage("Validando sessão administrativa...");
       setAuthRequestId(undefined);
-      try {
-        await loadBrowserSupabaseConfig({ retries: 1 });
-      } catch {
-        const config = getBrowserSupabaseConfigStatus();
-        if (!active) return;
-        setAuthMessage(config.message || "Não foi possível carregar o ambiente administrativo. Sua sessão permanece ativa.");
-        setAuthRequestId(config.requestId);
-        setAuthState("temporary_error");
-        return;
-      }
 
       try {
-        const { data } = await getBrowserAdminSession();
-        if (!active) return;
-        if (!data.session) {
-          window.sessionStorage.removeItem(profileKey);
-          window.sessionStorage.removeItem(cachedAtKey);
-          setAuthMessage("Sessão administrativa não encontrada. Redirecionando para o login...");
-          setAuthState("redirecting");
-          router.replace("/admin/login");
-          return;
-        }
-        if (data.session.user.user_metadata?.must_change_password) {
-          setAuthState("redirecting");
-          router.replace("/admin/nova-senha?obrigatoria=1");
-          return;
-        }
+        // The session lives in an httpOnly cookie, sent automatically with
+        // this same-origin request — nothing for the client to fetch or
+        // attach first.
         const controller = new AbortController();
         const timer = window.setTimeout(() => controller.abort(), 12_000);
         let response: Response;
         try {
-          response = await fetch("/api/admin/me", {
-            headers: { Authorization: `Bearer ${data.session.access_token}` },
-            cache: "no-store",
-            signal: controller.signal,
-          });
+          response = await fetch("/api/admin/me", { cache: "no-store", signal: controller.signal });
         } finally {
           window.clearTimeout(timer);
         }
@@ -420,6 +390,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           if (action === "tenant_selection") {
             setAuthState("redirecting");
             router.replace("/admin/selecionar-empresa");
+            return;
+          }
+          if (action === "mfa_required") {
+            setAuthState("redirecting");
+            router.replace("/admin/seguranca-mfa");
             return;
           }
           if (action === "login") {
@@ -436,6 +411,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         const payload = await response.json();
         const adminProfile = payload.admin || null;
         if (!active) return;
+        if (adminProfile?.mustChangePassword) {
+          setAuthState("redirecting");
+          router.replace("/admin/nova-senha?obrigatoria=1");
+          return;
+        }
         setProfile(adminProfile);
         if (adminProfile) {
           window.sessionStorage.setItem(profileKey, JSON.stringify(adminProfile));
@@ -478,19 +458,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     window.sessionStorage.removeItem("nexponto_admin_profile");
     window.sessionStorage.removeItem("nexponto_admin_profile_cached_at");
     clearAdminApiCache();
-    const supabase = await createBrowserSupabaseClient();
-    await supabase.auth.signOut();
+    await fetch("/api/auth/admin-logout", { method: "POST", cache: "no-store" }).catch(() => undefined);
     router.replace("/admin/login");
   }
 
   async function exitSupport() {
-    const { data } = await getBrowserAdminSession();
-    if (data.session) {
-      await fetch("/api/platform/support-sessions", {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${data.session.access_token}` },
-      });
-    }
+    await fetch("/api/platform/support-sessions", { method: "DELETE", cache: "no-store" }).catch(() => undefined);
     window.sessionStorage.removeItem("nexponto_admin_profile");
     window.sessionStorage.removeItem("nexponto_admin_profile_cached_at");
     router.replace("/platform");
@@ -579,6 +552,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <Building2 className="h-4 w-4 shrink-0" />
           </Link>
           {profile?.isPlatformSuperadmin ? <Link href="/platform" className="mt-2 flex items-center justify-between gap-2 rounded-2xl border border-sun-200 bg-sun-50 px-3 py-2 text-xs font-black text-slate-900 dark:border-sun-800 dark:bg-slate-900 dark:text-sun-200"><span>Plataforma NexLabs</span><Shield className="h-4 w-4" /></Link> : null}
+          {profile && profile.mfaEnrolled === false ? (
+            <Link href="/admin/seguranca-mfa" className="mt-2 flex items-center justify-between gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+              <span>Ativar confirmação em 2 etapas</span>
+              <ShieldAlert className="h-4 w-4 shrink-0" />
+            </Link>
+          ) : null}
         </div>
         <nav className="mt-4 grid flex-1 content-start gap-2 overflow-y-auto pr-1" aria-label="Navegação administrativa">
           {navGroups.map((group) => {

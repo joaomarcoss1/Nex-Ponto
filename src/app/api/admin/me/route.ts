@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/server/auth";
 import { canManageAdmins, canManageBranches, canManagePayroll, canViewFinancialData, isMasterAdmin } from "@/lib/server/branch-permissions";
 import { fail, ok } from "@/lib/server/http";
+import { hasVerifiedMfaFactor } from "@/lib/security/mfa";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,8 +28,11 @@ export async function GET(request: NextRequest) {
   const employeePortalUrl = tenantAccess?.public_access_code
     ? `${appUrl.replace(/\/$/, "")}/?empresa=${tenantAccess.public_access_code}`
     : null;
+  const mfaEnrolled = await hasVerifiedMfaFactor(auth.rawSupabase, auth.context.userId);
   return ok({
     admin: {
+      mustChangePassword: Boolean(auth.user.user_metadata?.must_change_password),
+      mfaEnrolled,
       id: auth.context.id,
       userId: auth.context.userId,
       email: auth.context.email,

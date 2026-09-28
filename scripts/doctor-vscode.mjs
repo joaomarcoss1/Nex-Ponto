@@ -121,15 +121,13 @@ if (!migrations.some((name) => name.startsWith("057"))) failures.push("migration
 if (!migrations.some((name) => name.startsWith("058"))) failures.push("migration de recuperação v5.5.5 ausente");
 if (!migrations.some((name) => name.startsWith("059"))) failures.push("migration de hardening final v5.5.6 ausente");
 
-const operationalAuthFiles = [
-  "src/components/admin/AdminLogin.tsx",
-  "src/components/admin/AdminShell.tsx",
-  "src/lib/server/auth.ts",
-  "src/app/api/platform/support-sessions/route.ts",
+const mfaWiredFiles = [
+  ["src/app/api/auth/admin-login/route.ts", "hasVerifiedMfaFactor"],
+  ["src/lib/server/auth.ts", "MFA_REQUIRED"],
+  ["src/components/admin/AdminShell.tsx", "mfa_required"],
 ];
-for (const file of operationalAuthFiles) {
-  const source = read(file);
-  if (/auth\.mfa|MFA_REQUIRED|aal2|totp/i.test(source)) failures.push(`segundo fator ainda interfere no fluxo operacional: ${file}`);
+for (const [file, marker] of mfaWiredFiles) {
+  if (!read(file).includes(marker)) failures.push(`segundo fator (MFA) não está conectado ao fluxo operacional: ${file}`);
 }
 
 for (const [marker, file] of flowMarkers) {

@@ -21,7 +21,6 @@ import { requirePublicTenant } from "@/lib/server/public-tenant";
 import { fail, ok, readJson } from "@/lib/server/http";
 import {
   assertPin,
-  getClientIp,
   getGenericPinErrorMessage,
   getPinBlockMessage,
   isPinTemporarilyBlocked,
@@ -116,9 +115,13 @@ export async function POST(request: NextRequest) {
     const { supabase, tenant } = await requirePublicTenant(request);
     const idempotencyKey = validIdempotency(body.idempotencyKey);
     const deviceInfo = body.deviceInfo || request.headers.get("user-agent") || "dispositivo não identificado";
+    // Keyed only by (tenant, employee) — never by IP or deviceInfo, both of
+    // which the client controls and can vary per request to reset the
+    // bucket. This is the actual brute-force backstop for a 4-digit PIN;
+    // isPinTemporarilyBlocked below is a second, independent guard.
     const rate = await consumeRateLimit({
       supabase,
-      bucket: rateLimitBucket([tenant.id, "clock", employeeId, getClientIp(request.headers), deviceInfo]),
+      bucket: rateLimitBucket([tenant.id, "clock", employeeId]),
       limit: 8,
       windowSeconds: 120,
       blockSeconds: 300
