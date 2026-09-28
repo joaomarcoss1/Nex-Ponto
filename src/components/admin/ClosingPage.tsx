@@ -2,7 +2,6 @@
 
 import { AlertTriangle, CheckCircle2, ClipboardList, FileSpreadsheet, Lock, WalletCards } from "lucide-react";
 import Link from "next/link";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { buttonClassName } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
 
@@ -16,7 +15,7 @@ const steps = [
 
 export function ClosingPage() {
   return (
-    <AdminShell>
+    <>
       <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
         <SectionTitle
           title="Fechamento mensal"
@@ -76,6 +75,6 @@ export function ClosingPage() {
           </Link>
         </Card>
       </div>
-    </AdminShell>
+    </>
   );
 }

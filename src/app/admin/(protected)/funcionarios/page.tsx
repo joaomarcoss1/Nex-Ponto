@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Download, FileUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import {
   ResourceManager,
   activeBadge,
@@ -199,7 +198,7 @@ export default function Page() {
   const omitFieldNamesOnSave = useMemo(() => canFinancial ? [] : [...financialFieldNames], [canFinancial]);
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle
         title="Gestão de funcionários"
         description="Cadastro profissional por matrícula, PIN de 4 dígitos, filial, setor, escala, salário, dados de pagamento, importação em massa e exportação para RH."
@@ -285,7 +284,6 @@ export default function Page() {
             options: [{ label: "Mensalista", value: "mensalista" }, { label: "Quinzenal", value: "quinzenal" }, { label: "Diarista", value: "diarista" }]
           }
         ]}
-        disableShell
         defaultValues={{
           employment_type: "mensalista",
           daily_rate_mode: "automatic",
@@ -300,6 +298,6 @@ export default function Page() {
           work_days: "1,2,3,4,5,6",
         }}
       />
-    </AdminShell>
+    </>
   );
 }

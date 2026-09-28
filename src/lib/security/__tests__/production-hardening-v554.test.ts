@@ -35,14 +35,15 @@ describe("production hardening v5.5.4", () => {
     expect(worker).toContain("if (failure.error)");
   });
 
-  it("keeps MFA outside operational authentication", () => {
-    for (const file of [
-      "src/components/admin/AdminLogin.tsx",
-      "src/components/admin/AdminShell.tsx",
-      "src/lib/server/auth.ts",
-      "src/app/api/auth/admin-login/route.ts",
-    ]) {
-      expect(source(file)).not.toMatch(/auth\.mfa|MFA_REQUIRED|aal2|totp|webauthn/i);
-    }
+  it("wires MFA into operational authentication behind an aal2 gate", () => {
+    // Supersedes the previous "MFA kept outside operational authentication"
+    // guard from this same file — real TOTP MFA was added deliberately as
+    // part of the production-readiness pass; see
+    // src/lib/security/__tests__/admin-login-hardening.test.ts for the full
+    // set of behavioral guards around it.
+    const login = source("src/app/api/auth/admin-login/route.ts");
+    const authLib = source("src/lib/server/auth.ts");
+    expect(login).toContain("hasVerifiedMfaFactor");
+    expect(authLib).toMatch(/decodeAal\(token\)\s*!==\s*"aal2"/);
   });
 });

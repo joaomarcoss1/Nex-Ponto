@@ -18,6 +18,8 @@ import {
 } from "@/lib/security/authorization";
 import { resolveActiveSupportSession } from "@/lib/server/support-session";
 import { permissionsForSupportScopes } from "@/lib/security/support-scopes";
+import { readAdminAccessToken } from "@/lib/server/admin-session-cookie";
+import { decodeAal, hasVerifiedMfaFactor } from "@/lib/security/mfa";
 
 export type AdminContext = {
   id: string;
@@ -201,8 +203,10 @@ function sameUuidSet(left: readonly string[] | null | undefined, right: readonly
 }
 
 export async function authenticatedUser(request: NextRequest): Promise<AuthenticatedUserResult> {
-  const authHeader = request.headers.get("authorization") || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "";
+  // The admin session lives in an httpOnly cookie set by /api/auth/admin-login,
+  // never in a header the browser's own JS could be tricked into reading —
+  // see src/lib/server/admin-session-cookie.ts for why.
+  const token = readAdminAccessToken(request) || "";
   const requestId = request.headers.get("x-request-id") || undefined;
   if (!token) return { error: fail("Login administrativo obrigatório.", 401, { code: "AUTH_SESSION_REQUIRED", requestId }) } as const;
 
@@ -219,6 +223,22 @@ export async function authenticatedUser(request: NextRequest): Promise<Authentic
         ),
       } as const;
     }
+
+    // MFA enforcement: once an admin has a verified factor enrolled, every
+    // request needs an aal2 session, not just login. A stolen aal1 cookie
+    // alone must not be enough — that's the whole point of having MFA.
+    // Accounts with no factor enrolled yet are unaffected (aal1 stays valid),
+    // so this rolls out per-admin as each one enrolls rather than locking
+    // everyone out the moment the feature ships.
+    if (decodeAal(token) !== "aal2") {
+      const supabaseAdmin = getSupabaseAdmin();
+      if (await hasVerifiedMfaFactor(supabaseAdmin, userData.user.id)) {
+        return {
+          error: fail("Confirmação de dois fatores necessária.", 401, { code: "MFA_REQUIRED", requestId }),
+        } as const;
+      }
+    }
+
     return { token, user: userData.user } as const;
   } catch (cause) {
     const code = cause instanceof Error && "code" in cause ? String((cause as Error & { code?: unknown }).code || "") : "";

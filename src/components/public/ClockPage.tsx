@@ -50,8 +50,8 @@ function LocationChip({ state, distance }: { state: GeoState; distance?: number 
             : "GPS pronto";
   const tone = state === "inside" ? "green" : state === "outside" || state === "denied" ? "red" : state === "searching" ? "yellow" : "blue";
   return (
-    <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-700">
-      <Navigation className="h-4 w-4 text-brand-700" />
+    <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+      <Navigation className="h-4 w-4 text-brand-700 dark:text-brand-400" />
       <Badge tone={tone as any}>{label}</Badge>
     </div>
   );
@@ -61,23 +61,23 @@ function DayTimeline({ entries }: { entries: Array<{ id: string; action: TimeAct
   const ordered = [...entries].sort((a, b) => new Date(a.entry_timestamp).getTime() - new Date(b.entry_timestamp).getTime());
   return (
     <div className="grid gap-3">
-      <h2 className="font-black text-slate-950">Linha do tempo da jornada</h2>
-      <div className="relative grid gap-2 before:absolute before:bottom-5 before:left-[18px] before:top-5 before:w-px before:bg-slate-200">
+      <h2 className="font-black text-slate-950 dark:text-white">Linha do tempo da jornada</h2>
+      <div className="relative grid gap-2 before:absolute before:bottom-5 before:left-[18px] before:top-5 before:w-px before:bg-slate-200 dark:before:bg-slate-700">
         {ordered.map((entry, index) => (
-          <div key={entry.id} className="relative flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+          <div key={entry.id} className="relative flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
             <span className="z-10 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-600 text-white shadow-sm">
               <CheckCircle2 className="h-5 w-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-black text-slate-900">{actionLabels[entry.action]}</p>
-              <p className="text-xs font-semibold text-slate-500">{formatDateTime(entry.entry_timestamp)} • evento {index + 1}</p>
+              <p className="text-sm font-black text-slate-900 dark:text-white">{actionLabels[entry.action]}</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{formatDateTime(entry.entry_timestamp)} • evento {index + 1}</p>
             </div>
             <Badge tone={entry.status === "valid" ? "green" : entry.status === "pending_review" ? "yellow" : "red"}>
               {statusLabels[entry.status] || entry.status}
             </Badge>
           </div>
         ))}
-        {!ordered.length ? <p className="rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-500">Nenhuma marcação nesta jornada.</p> : null}
+        {!ordered.length ? <p className="rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-500 dark:bg-slate-800 dark:text-slate-400">Nenhuma marcação nesta jornada.</p> : null}
       </div>
     </div>
   );
@@ -317,12 +317,12 @@ export function ClockPage() {
     <PublicShell eyebrow="Ponto mobile" title="Registro de Ponto" subtitle="Informe seu nome e PIN para registrar sua jornada.">
       <div className="public-clock-flow grid gap-4">
         {qrToken ? (
-          <p className="flex items-center gap-2 rounded-2xl border border-brand-200 bg-brand-50 p-3 text-sm font-bold text-brand-900">
+          <p className="flex items-center gap-2 rounded-2xl border border-brand-200 bg-brand-50 p-3 text-sm font-bold text-brand-900 dark:border-brand-800 dark:bg-brand-950/40 dark:text-brand-200">
             <ShieldAlert className="h-4 w-4" /> QR físico da filial validado
           </p>
         ) : null}
         {deviceState ? (
-          <p className="rounded-2xl border border-brand-100 bg-brand-50 p-3 text-xs font-bold text-brand-900">
+          <p className="rounded-2xl border border-brand-100 bg-brand-50 p-3 text-xs font-bold text-brand-900 dark:border-brand-800 dark:bg-brand-950/40 dark:text-brand-200">
             Dispositivo {deviceState.status === "active" ? "autorizado" : "monitorado"} • política {devicePolicyLabels[deviceState.mode] || deviceState.mode}
           </p>
         ) : null}
@@ -339,15 +339,15 @@ export function ClockPage() {
             ))}
           </Select>
         </Field>
-        {branchError ? <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-900">{branchError}</p> : null}
+        {branchError ? <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">{branchError}</p> : null}
 
         <LocationChip state={geoState} distance={lastConfirmation?.distanceMeters} />
-        <Button type="button" variant="ghost" onClick={testGps} disabled={loading || !branchId} loading={loading && geoState === "searching"} className="w-full rounded-2xl border border-brand-100 bg-white text-brand-800 hover:bg-brand-50">
+        <Button type="button" variant="ghost" onClick={testGps} disabled={loading || !branchId} loading={loading && geoState === "searching"} className="w-full rounded-2xl border border-brand-100 bg-white text-brand-800 hover:bg-brand-50 dark:border-brand-800 dark:bg-slate-800 dark:text-brand-200 dark:hover:bg-slate-700">
           <Navigation className="h-4 w-4" />
           Testar GPS da filial
         </Button>
         {lastConfirmation?.accuracyMeters ? (
-          <p className="rounded-2xl border border-slate-200 bg-white p-3 text-xs font-bold text-slate-600">Precisão do GPS: {lastConfirmation.accuracyMeters}m • Raio da unidade: {lastConfirmation.radiusMeters || 900}m</p>
+          <p className="rounded-2xl border border-slate-200 bg-white p-3 text-xs font-bold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">Precisão do GPS: {lastConfirmation.accuracyMeters}m • Raio da unidade: {lastConfirmation.radiusMeters || 900}m</p>
         ) : null}
 
         <Button type="button" size="lg" onClick={loadState} disabled={loading || !employee || pin.length !== 4} loading={loading && !state} className="w-full rounded-2xl">
@@ -356,12 +356,12 @@ export function ClockPage() {
         </Button>
 
         {state ? (
-          <section className="grid gap-4 rounded-[1.4rem] border border-brand-100 bg-gradient-to-br from-brand-50 to-white p-4 shadow-[0_18px_50px_rgba(18,104,243,0.09)] sm:rounded-3xl">
+          <section className="grid gap-4 rounded-[1.4rem] border border-brand-100 bg-gradient-to-br from-brand-50 to-white p-4 shadow-[0_18px_50px_rgba(18,104,243,0.09)] dark:border-brand-900 dark:from-slate-800 dark:to-slate-800 sm:rounded-3xl">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-sm font-bold text-brand-700">Próximo ponto recomendado</p>
-                <h2 className="text-2xl font-black text-brand-900">{nextLabel}</h2>
-                <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-brand-700">
+                <p className="text-sm font-bold text-brand-700 dark:text-brand-300">Próximo ponto recomendado</p>
+                <h2 className="text-2xl font-black text-brand-900 dark:text-white">{nextLabel}</h2>
+                <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-brand-700 dark:text-brand-300">
                   <MapPin className="h-3.5 w-3.5" />
                   {selectedBranch?.name || state.employee?.branch_name || "Filial selecionada"}
                 </p>
@@ -382,7 +382,7 @@ export function ClockPage() {
                 Registrar agora: {actionLabels[recommendedAction]}
               </Button>
             ) : null}
-            <button type="button" onClick={() => setShowOtherActions((value) => !value)} className="flex items-center justify-center gap-2 rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm font-black text-brand-800">
+            <button type="button" onClick={() => setShowOtherActions((value) => !value)} className="flex items-center justify-center gap-2 rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm font-black text-brand-800 dark:border-brand-800 dark:bg-slate-800 dark:text-brand-200">
               Outras opções de ponto
               <ChevronDown className={`h-4 w-4 transition ${showOtherActions ? "rotate-180" : ""}`} />
             </button>
@@ -409,13 +409,13 @@ export function ClockPage() {
         ) : null}
 
         {pendingAction ? (
-          <section className="rounded-3xl border-2 border-amber-300 bg-amber-50 p-4">
+          <section className="rounded-3xl border-2 border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
             <div className="flex items-start gap-3">
-              <ShieldAlert className="mt-1 h-6 w-6 text-amber-700" />
+              <ShieldAlert className="mt-1 h-6 w-6 text-amber-700 dark:text-amber-400" />
               <div className="grid flex-1 gap-3">
                 <div>
-                  <h2 className="font-black text-amber-950">Justificativa obrigatória</h2>
-                  <p className="text-sm text-amber-900">{message}</p>
+                  <h2 className="font-black text-amber-950 dark:text-amber-100">Justificativa obrigatória</h2>
+                  <p className="text-sm text-amber-900 dark:text-amber-200">{message}</p>
                 </div>
                 <Textarea value={justification} onChange={(event) => setJustification(event.target.value)} placeholder="Explique o motivo" />
                 <Button type="button" disabled={loading || justification.trim().length < 8} onClick={() => register(pendingAction, justification)}>
@@ -427,20 +427,20 @@ export function ClockPage() {
         ) : null}
 
         {state?.entries?.length ? <DayTimeline entries={state.entries} /> : null}
-        {message && !pendingAction ? <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-900">{message}</p> : null}
-        {error ? <p className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800">{error}</p> : null}
+        {message && !pendingAction ? <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{message}</p> : null}
+        {error ? <p className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">{error}</p> : null}
       </div>
 
       {lastConfirmation ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-[28px] bg-white p-5 text-center shadow-[0_32px_100px_rgba(0,0,0,0.28)]">
+          <div className="w-full max-w-sm rounded-[28px] bg-white p-5 text-center shadow-[0_32px_100px_rgba(0,0,0,0.28)] dark:bg-slate-800">
             <div className={`mx-auto grid h-20 w-20 place-items-center rounded-full ${
-              lastConfirmation.successful === false ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+              lastConfirmation.successful === false ? "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
             }`}>
               {lastConfirmation.successful === false ? <ShieldAlert className="h-11 w-11" /> : <CheckCircle2 className="h-11 w-11" />}
             </div>
-            <h2 className="mt-4 text-2xl font-black text-slate-950">{lastConfirmation.confirmation}</h2>
-            <div className="mt-4 grid gap-2 rounded-2xl bg-slate-50 p-3 text-left text-sm font-semibold text-slate-700">
+            <h2 className="mt-4 text-2xl font-black text-slate-950 dark:text-white">{lastConfirmation.confirmation}</h2>
+            <div className="mt-4 grid gap-2 rounded-2xl bg-slate-50 p-3 text-left text-sm font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-300">
               <p>Ação: {lastConfirmation.action === "gps_test" ? "Diagnóstico de GPS (sem registrar ponto)" : actionLabels[lastConfirmation.action as TimeAction]}</p>
               <p>Horário: {formatDateTime(lastConfirmation.timestamp)}</p>
               <p>Filial: {lastConfirmation.branchName}</p>
@@ -458,7 +458,7 @@ export function ClockPage() {
                 href={`${lastConfirmation.receiptUrl}&format=html`}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-4 block rounded-2xl border border-brand-200 px-4 py-3 text-sm font-black text-brand-800"
+                className="mt-4 block rounded-2xl border border-brand-200 px-4 py-3 text-sm font-black text-brand-800 dark:border-brand-800 dark:text-brand-300"
               >
                 Abrir comprovante
               </a>

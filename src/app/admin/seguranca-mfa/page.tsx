@@ -1,9 +1,10 @@
-import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { AdminMfa } from "@/components/admin/AdminMfa";
 
-/**
- * Compatibilidade para favoritos e versões antigas da PWA.
- * A autenticação administrativa atual usa somente e-mail e senha.
- */
-export default function LegacyMfaRoute() {
-  redirect("/admin");
+export default function Page() {
+  return (
+    <Suspense>
+      <AdminMfa />
+    </Suspense>
+  );
 }

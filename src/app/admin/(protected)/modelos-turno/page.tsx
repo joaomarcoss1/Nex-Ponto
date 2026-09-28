@@ -2,7 +2,6 @@
 
 import { Clock3, Plus, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -76,7 +75,7 @@ export default function ShiftTemplatesPage() {
     } finally { setSaving(false); }
   }
 
-  return <AdminShell>
+  return <>
     <SectionTitle title="Modelos de turno" description="Padronize entrada, saída, turnos noturnos e múltiplos intervalos. O sistema valida a carga diária antes de salvar." />
     {error ? <p className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800">{error}</p> : null}
     {message ? <p className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-800">{message}</p> : null}
@@ -94,5 +93,5 @@ export default function ShiftTemplatesPage() {
       <div className="grid content-start gap-3">{templates.map((template) => <Card key={template.id} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex min-w-0 items-start gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl" style={{ backgroundColor: `${template.color}1A`, color: template.color }}><Clock3 className="h-5 w-5" /></div><div className="min-w-0"><h3 className="truncate font-black text-slate-950">{template.name}</h3><p className="text-sm font-semibold text-slate-600">{template.starts_at.slice(0,5)}–{template.ends_at.slice(0,5)} · {template.expected_daily_minutes} min</p><div className="mt-2 flex flex-wrap gap-2"><Badge tone="blue">{template.shift_template_intervals?.length || 0} intervalo(s)</Badge>{template.crosses_midnight ? <Badge tone="yellow">Turno noturno</Badge> : null}</div></div></div><div className="flex gap-2"><Button size="sm" variant="ghost" disabled={saving} onClick={() => edit(template)}>Editar</Button><Button size="sm" variant="danger" disabled={saving} onClick={() => setDeactivateId(template.id)}>Desativar</Button></div></Card>)}{!templates.length ? <Card className="grid min-h-44 place-items-center text-center text-sm font-bold text-slate-500">Nenhum modelo cadastrado.</Card> : null}</div>
     </div>
     <ConfirmationDialog open={Boolean(deactivateId)} title="Desativar modelo de turno?" description="O modelo deixará de aparecer para novos planejamentos. Escalas já publicadas continuarão preservadas no histórico." confirmLabel="Desativar modelo" destructive loading={saving} onCancel={() => setDeactivateId(null)} onConfirm={() => void deactivate()} />
-  </AdminShell>;
+  </>;
 }

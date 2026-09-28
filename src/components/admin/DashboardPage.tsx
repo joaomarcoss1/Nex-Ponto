@@ -3,7 +3,6 @@
 import { AlertTriangle, Building2, CalendarCheck2, Clock3, FileCheck2, TrendingUp, Users, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Button, buttonClassName } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { ToastMessage } from "@/components/ui/feedback";
@@ -41,11 +40,11 @@ function BarList({ data }: { data: Array<{ label: string; value: number }> }) {
     <div className="grid gap-3">
       {data.map((item) => (
         <div key={item.label}>
-          <div className="mb-1 flex min-w-0 justify-between gap-3 text-xs font-bold text-slate-600">
+          <div className="mb-1 flex min-w-0 justify-between gap-3 text-xs font-bold text-slate-600 dark:text-slate-400">
             <span className="min-w-0 truncate">{item.label}</span>
             <span className="shrink-0">{item.value}</span>
           </div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
             <div className="h-2.5 rounded-full bg-gradient-to-r from-brand-700 via-brand-500 to-sun-400 transition-all duration-700" style={{ width: `${Math.max(6, (item.value / max) * 100)}%` }} />
           </div>
         </div>
@@ -87,7 +86,7 @@ export function DashboardPage() {
   }
 
   return (
-    <AdminShell>
+    <>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <SectionTitle title="Dashboard" description="Resumo rápido para o painel abrir sem travamentos. Indicadores pesados são carregados somente quando solicitados." />
         <Button variant="secondary" loading={loadingDetails} onClick={loadDetails}>
@@ -99,11 +98,11 @@ export function DashboardPage() {
       {error ? <ToastMessage type="error">{error}</ToastMessage> : null}
 
       {holidayNotifications.length ? (
-        <Card className="mb-4 border-amber-300 bg-gradient-to-r from-amber-50 to-sun-50">
+        <Card className="mb-4 border-amber-300 bg-gradient-to-r from-amber-50 to-sun-50 dark:border-amber-800 dark:from-slate-800 dark:to-slate-800">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-amber-950"><CalendarCheck2 className="h-5 w-5" /><h2 className="font-black">Decisão de funcionamento pendente</h2></div>
-              <div className="mt-2 grid gap-1 text-sm font-semibold text-amber-900">
+              <div className="flex items-center gap-2 text-amber-950 dark:text-amber-200"><CalendarCheck2 className="h-5 w-5" /><h2 className="font-black">Decisão de funcionamento pendente</h2></div>
+              <div className="mt-2 grid gap-1 text-sm font-semibold text-amber-900 dark:text-amber-300">
                 {holidayNotifications.slice(0, 3).map((notification) => <p key={notification.id}>{notification.message}</p>)}
                 {holidayNotifications.length > 3 ? <p>Mais {holidayNotifications.length - 3} notificação(ões) pendente(s).</p> : null}
               </div>
@@ -116,7 +115,7 @@ export function DashboardPage() {
       {!summary ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
           {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="h-28 animate-pulse rounded-3xl border border-slate-200 bg-white shadow-sm" />
+            <div key={index} className="h-28 animate-pulse rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800" />
           ))}
         </div>
       ) : (
@@ -125,10 +124,10 @@ export function DashboardPage() {
             <Card key={key} className="premium-surface">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="break-words text-xs font-black uppercase tracking-[0.10em] text-slate-500">{label}</p>
-                  <p className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">{summary[key] ?? 0}</p>
+                  <p className="break-words text-xs font-black uppercase tracking-[0.10em] text-slate-500 dark:text-slate-400">{label}</p>
+                  <p className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950 dark:text-white">{summary[key] ?? 0}</p>
                 </div>
-                <span className="shrink-0 rounded-2xl bg-gradient-to-br from-brand-50 to-sun-50 p-3 text-brand-700 shadow-inner">
+                <span className="shrink-0 rounded-2xl bg-gradient-to-br from-brand-50 to-sun-50 p-3 text-brand-700 shadow-inner dark:from-slate-700 dark:to-slate-700 dark:text-brand-300">
                   <Icon className="h-5 w-5" />
                 </span>
               </div>
@@ -144,8 +143,8 @@ export function DashboardPage() {
               <Card key={key} className="premium-surface">
                 <div className="flex min-w-0 items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="break-words text-xs font-black uppercase tracking-[0.10em] text-slate-500">{label}</p>
-                    <p className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">
+                    <p className="break-words text-xs font-black uppercase tracking-[0.10em] text-slate-500 dark:text-slate-400">{label}</p>
+                    <p className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950 dark:text-white">
                       {key === "estimatedPayroll"
                         ? formatMoney(details.cards[key])
                         : key === "overtimePeriod"
@@ -153,7 +152,7 @@ export function DashboardPage() {
                           : details.cards[key]}
                     </p>
                   </div>
-                  <span className="shrink-0 rounded-2xl bg-gradient-to-br from-brand-50 to-sun-50 p-3 text-brand-700 shadow-inner">
+                  <span className="shrink-0 rounded-2xl bg-gradient-to-br from-brand-50 to-sun-50 p-3 text-brand-700 shadow-inner dark:from-slate-700 dark:to-slate-700 dark:text-brand-300">
                     <Icon className="h-5 w-5" />
                   </span>
                 </div>
@@ -162,9 +161,9 @@ export function DashboardPage() {
           </div>
 
           {details.alerts?.length ? (
-            <Card className="border-amber-200 bg-amber-50">
-              <h2 className="mb-2 font-black text-amber-950">Alertas importantes</h2>
-              <div className="grid gap-2 text-sm font-semibold text-amber-900">
+            <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40">
+              <h2 className="mb-2 font-black text-amber-950 dark:text-amber-200">Alertas importantes</h2>
+              <div className="grid gap-2 text-sm font-semibold text-amber-900 dark:text-amber-300">
                 {details.alerts.map((alert: string) => <p key={alert}>{alert}</p>)}
               </div>
             </Card>
@@ -190,6 +189,6 @@ export function DashboardPage() {
           </div>
         </div>
       ) : null}
-    </AdminShell>
+    </>
   );
 }

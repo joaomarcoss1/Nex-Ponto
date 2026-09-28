@@ -2,7 +2,6 @@
 
 import { Download, FileSpreadsheet, FilterX, Search } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/field";
@@ -100,7 +99,7 @@ export function ReportsPage() {
   ];
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle title="Relatórios" description="Pontos, faltas, atrasos, horas extras e pré-folha para conferência e exportação contábil." />
       {message ? <p className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-800">{message}</p> : null}
       {error ? <p className="mb-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800">{error}</p> : null}
@@ -282,6 +281,6 @@ export function ReportsPage() {
           </table>
         </div>
       </Card>
-    </AdminShell>
+    </>
   );
 }

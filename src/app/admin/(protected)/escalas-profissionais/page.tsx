@@ -3,7 +3,6 @@
 import { CalendarRange, CheckCircle2, Layers3, Plus, ShieldAlert, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClassName } from "@/components/ui/button";
 import { Card, SectionTitle, StatCard } from "@/components/ui/card";
@@ -126,7 +125,7 @@ export default function ProfessionalSchedulesPageV51() {
   const blockingCoverage = useMemo(() => coverage.filter((item) => item.publish_policy === "block").length, [coverage]);
 
   return (
-    <AdminShell>
+    <>
       <div className="space-y-4 pb-28 md:pb-8">
         <SectionTitle title="Escalas profissionais" description="Ciclos 5x2, 6x1, 12x36, semana A/B, rodízio, cobertura mínima e atribuições com vigência. Regras legais permanecem parametrizadas e aguardam homologação quando aplicável." />
         {message ? <ToastMessage type="success">{message}</ToastMessage> : null}
@@ -170,6 +169,6 @@ export default function ProfessionalSchedulesPageV51() {
           <div className="grid gap-3 md:grid-cols-2">{payload.assignments.map((assignment)=><Card key={assignment.id}><div className="flex items-start gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand-100 text-brand-700"><CheckCircle2 className="h-5 w-5"/></span><div><p className="font-black text-slate-950">{assignment.employees?.full_name || assignment.employee_id.slice(0,8)}</p><p className="text-sm font-semibold text-slate-500">{assignment.schedule_cycles?.name || assignment.cycle_id.slice(0,8)}</p><p className="mt-1 text-xs text-slate-400">Vigente desde {assignment.effective_from}</p></div></div></Card>)}{!payload.assignments.length?<Card><ShieldAlert className="mx-auto h-8 w-8 text-slate-300"/><p className="mt-2 text-center text-sm font-semibold text-slate-500">Nenhuma atribuição ativa.</p></Card>:null}</div>
         </div> : null}
       </div>
-    </AdminShell>
+    </>
   );
 }

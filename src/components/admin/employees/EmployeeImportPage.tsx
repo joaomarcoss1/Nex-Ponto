@@ -2,7 +2,6 @@
 
 import { Download, FileUp, ShieldCheck, UploadCloud } from "lucide-react";
 import { useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -60,7 +59,7 @@ export function EmployeeImportPage() {
   }
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle title="Importar funcionários" description="Cadastre equipes completas por Excel, CSV ou PDF assistido, gere PIN de 4 dígitos automaticamente e produza relatório de conferência." />
       {message ? <p className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-800">{message}</p> : null}
       {error ? <p className="mb-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800">{error}</p> : null}
@@ -127,6 +126,6 @@ export function EmployeeImportPage() {
           </table>
         </div>
       </Card>
-    </AdminShell>
+    </>
   );
 }

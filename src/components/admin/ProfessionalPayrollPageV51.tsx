@@ -2,7 +2,6 @@
 
 import { AlertTriangle, BadgeCheck, Calculator, CheckCircle2, FileSpreadsheet, History, LockKeyhole, RefreshCw, ShieldCheck, WalletCards } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, StatCard } from "@/components/ui/card";
@@ -152,7 +151,7 @@ export function ProfessionalPayrollPageV51() {
   const canCloseWithExceptions = selectedRun?.status === "financial_approved" && unresolvedCritical === 0 && acceptedCritical > 0;
 
   return (
-    <AdminShell>
+    <>
       <div className="space-y-4 pb-28 md:pb-8">
         <section className="overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-[#07162f] via-[#0b2d61] to-[#1152a7] p-5 text-white shadow-[0_30px_90px_rgba(5,25,65,0.25)] sm:p-7">
           <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -237,6 +236,6 @@ export function ProfessionalPayrollPageV51() {
           </div>
         </div>
       </div>
-    </AdminShell>
+    </>
   );
 }

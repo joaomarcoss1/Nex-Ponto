@@ -6,6 +6,8 @@ import { fail, ok } from "@/lib/server/http";
 import { getClientIp } from "@/lib/server/pin";
 import { consumeRateLimit, privacyHash, rateLimitBucket } from "@/lib/server/rate-limit";
 import { structuredLog } from "@/lib/observability/logger";
+import { setAdminSessionCookies } from "@/lib/server/admin-session-cookie";
+import { hasVerifiedMfaFactor } from "@/lib/security/mfa";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,16 +78,35 @@ export async function POST(request: NextRequest) {
       return noStore(fail("E-mail ou senha inválidos.", 401, { code: "AUTH_SESSION_INVALID", requestId }));
     }
 
-    return noStore(ok({
-      session: {
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-      },
+    const mfaEnrolled = await hasVerifiedMfaFactor(admin, data.user.id);
+    if (mfaEnrolled) {
+      // Password verified (aal1), but this account has a second factor — don't
+      // set the real session cookie yet. The browser needs the aal1 tokens
+      // briefly, client-side, only to complete the MFA challenge directly
+      // against Supabase; /api/auth/admin-mfa-complete exchanges the
+      // resulting aal2 session for the httpOnly cookie once that's done.
+      return noStore(ok({
+        mfaRequired: true,
+        session: {
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        },
+      }));
+    }
+
+    const response = noStore(ok({
+      mfaRequired: false,
       user: {
         id: data.user.id,
         mustChangePassword: Boolean(data.user.user_metadata?.must_change_password),
       },
     }));
+    setAdminSessionCookies(response, {
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      expires_in: data.session.expires_in,
+    });
+    return response;
   } catch (cause) {
     const environment = cause instanceof Error && "code" in cause
       && String((cause as Error & { code?: unknown }).code) === "ENVIRONMENT_NOT_READY";

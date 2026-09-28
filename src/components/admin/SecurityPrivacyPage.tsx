@@ -2,15 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Laptop2, RefreshCw, Scale, ShieldCheck } from "lucide-react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { SectionTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ResponsiveModal } from "@/components/ui/mobile";
 import { Field, Textarea } from "@/components/ui/field";
-import { getBrowserAdminSession } from "@/lib/client/supabase";
-import { apiErrorFromPayload } from "@/lib/client/api-error";
+import { adminFetch } from "@/lib/client/admin-api";
 
 type Device = {
   id: string;
@@ -29,23 +27,6 @@ type PrivacyRequest = {
   due_at?: string;
 };
 
-async function adminJson(path: string, init?: RequestInit) {
-  const { data } = await getBrowserAdminSession();
-  if (!data.session) throw new Error("Sessão administrativa expirada.");
-  const response = await fetch(path, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${data.session.access_token}`,
-      ...(init?.headers || {}),
-    },
-    cache: "no-store",
-  });
-  const payload = await response.json();
-  if (!response.ok) throw apiErrorFromPayload(payload, response.status, "Falha na operação.");
-  return payload;
-}
-
 export function SecurityPrivacyPage() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [requests, setRequests] = useState<PrivacyRequest[]>([]);
@@ -59,8 +40,8 @@ export function SecurityPrivacyPage() {
     setError("");
     try {
       const [devicePayload, privacyPayload] = await Promise.all([
-        adminJson("/api/admin/devices"),
-        adminJson("/api/admin/privacy-requests"),
+        adminFetch<{ devices: Device[] }>("/api/admin/devices"),
+        adminFetch<{ requests: PrivacyRequest[] }>("/api/admin/privacy-requests"),
       ]);
       setDevices(devicePayload.devices || []);
       setRequests(privacyPayload.requests || []);
@@ -79,7 +60,7 @@ export function SecurityPrivacyPage() {
     if (!deviceDecision || decisionReason.trim().length < 10 || loading) return;
     setLoading(true); setError("");
     try {
-      await adminJson("/api/admin/devices", {
+      await adminFetch("/api/admin/devices", {
         method: "PATCH",
         body: JSON.stringify({ id: deviceDecision.id, status: deviceDecision.status, reason: decisionReason.trim() }),
       });
@@ -89,7 +70,7 @@ export function SecurityPrivacyPage() {
   }
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle
         title="Segurança e privacidade"
         description="Aprovação de dispositivos, rastreabilidade de risco e fila operacional LGPD."
@@ -142,6 +123,6 @@ export function SecurityPrivacyPage() {
         </Card>
       </div>
       <ResponsiveModal open={Boolean(deviceDecision)} title="Confirmar decisão sobre dispositivo" onClose={() => !loading && setDeviceDecision(null)}><div className="grid gap-4"><p className="text-sm font-medium text-slate-600">A alteração será aplicada imediatamente e registrada na auditoria.</p><Field label="Motivo auditável" hint="Informe pelo menos 10 caracteres."><Textarea autoFocus minLength={10} value={decisionReason} onChange={(event) => setDecisionReason(event.target.value)} /></Field><div className="grid gap-2 sm:grid-cols-2"><Button variant="ghost" disabled={loading} onClick={() => setDeviceDecision(null)}>Cancelar</Button><Button variant={deviceDecision?.status === "blocked" ? "danger" : "primary"} loading={loading} disabled={decisionReason.trim().length < 10} onClick={() => void changeDevice()}>Confirmar decisão</Button></div></div></ResponsiveModal>
-    </AdminShell>
+    </>
   );
 }

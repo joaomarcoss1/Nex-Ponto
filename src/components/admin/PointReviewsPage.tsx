@@ -2,7 +2,6 @@
 
 import { ChevronLeft, ChevronRight, Check, MapPin, Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -73,7 +72,7 @@ export function PointReviewsPage() {
   }
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle title="Revisões de ponto" description="Analise atrasos, saídas antecipadas e justificativas vinculadas ao ponto." />
       <Card className="mb-4">
         <div className="grid gap-3 md:grid-cols-5">
@@ -158,6 +157,6 @@ export function PointReviewsPage() {
           <Button variant="ghost" title="Próxima página" aria-label="Próxima página" disabled={loading || page >= totalPages} onClick={() => load(page + 1)}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </nav>
-    </AdminShell>
+    </>
   );
 }

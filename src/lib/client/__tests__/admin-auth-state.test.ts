@@ -18,4 +18,8 @@ describe("classifyAdminAuthFailure", () => {
     expect(classifyAdminAuthFailure(403, "MEMBERSHIP_NOT_FOUND")).toBe("fatal_error");
     expect(classifyAdminAuthFailure(403, "TENANT_INACTIVE")).toBe("fatal_error");
   });
+
+  it("encaminha para o desafio de segundo fator sem derrubar a sessão", () => {
+    expect(classifyAdminAuthFailure(401, "MFA_REQUIRED")).toBe("mfa_required");
+  });
 });

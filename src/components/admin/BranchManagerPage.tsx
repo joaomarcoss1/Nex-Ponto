@@ -3,7 +3,6 @@
 import { AlertTriangle, Building2, CalendarDays, CheckCircle2, Clock3, Coffee, MapPin, UserCheck, UserRoundX, Users } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Card, SectionTitle, StatCard } from "@/components/ui/card";
 import { adminFetch } from "@/lib/client/admin-api";
@@ -53,7 +52,7 @@ export function BranchManagerPage() {
   }), [geoRows]);
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle title="Operação da filial" description="Painel móvel do gerente com presença, intervalos, ausências, geolocalização e atalhos para decisões do dia." />
       {error ? <p className="mb-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800">{error}</p> : null}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
@@ -92,6 +91,6 @@ export function BranchManagerPage() {
           </div>
         </Card>
       </div>
-    </AdminShell>
+    </>
   );
 }

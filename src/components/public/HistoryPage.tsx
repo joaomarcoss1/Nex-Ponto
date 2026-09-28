@@ -82,7 +82,7 @@ export function HistoryPage() {
               <p className="text-xs font-black uppercase tracking-[0.16em] text-brand-700">Funcionário validado</p>
               <h2 className="mt-1 text-2xl font-black text-brand-950">{data.employee.full_name}</h2>
               <p className="text-sm font-semibold text-brand-800">{data.employee.role} • {data.employee.branch_name || "Filial"}</p>
-              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 text-center sm:grid-cols-5">
+              <div className="mt-4 grid grid-cols-2 gap-2 text-center sm:grid-cols-5">
                 <div className="rounded-2xl bg-white p-3 shadow-sm"><strong className="block text-xl text-brand-800">{data.summary.totalEntries}</strong><span className="text-[11px] font-bold text-slate-500">Pontos</span></div>
                 <div className="rounded-2xl bg-white p-3 shadow-sm"><strong className="block text-xl text-amber-700">{data.summary.pendingReviews}</strong><span className="text-[11px] font-bold text-slate-500">Revisões</span></div>
                 <div className="rounded-2xl bg-white p-3 shadow-sm"><strong className="block text-xl text-red-700">{data.summary.lateOccurrences}</strong><span className="text-[11px] font-bold text-slate-500">Atrasos</span></div>

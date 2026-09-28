@@ -23,12 +23,15 @@ export function PublicShell({
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[var(--background,#f5f7fb)] px-3 pb-32 sm:px-4">
       <section className="absolute inset-x-0 top-0 h-72 overflow-hidden bg-brand-700">
-        {/* Decorative shapes are anchored to a centered box matching the card's own
-            width (not the full viewport) so they stay balanced around the card
-            instead of drifting off to the screen edges on wide viewports. */}
+        {/* The circle and wave are sized off the full banner (viewport) width, not
+            the narrower card width, so the banner reads as one consistent shape
+            on any screen instead of a card-width patch sitting inside a much
+            wider plain-blue rectangle (the "crooked" seam on desktop widths). */}
+        <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-brand-500/60" />
+        <div className="absolute -bottom-24 inset-x-[-15%] h-48 rounded-[50%] bg-[var(--background,#f5f7fb)]" />
+        {/* The accent bar stays aligned with the card underneath, so it keeps its
+            own centered box matching the card's width. */}
         <div className="relative mx-auto h-full" style={{ width: "min(36rem, calc(100vw - 1.5rem))" }}>
-          <div className="absolute -right-24 -top-28 h-72 w-72 rounded-full bg-brand-500/60" />
-          <div className="absolute -bottom-24 left-0 h-48 w-[130%] rounded-[50%] bg-[var(--background,#f5f7fb)]" />
           <div className="absolute bottom-4 left-8 h-1.5 w-28 rounded-full bg-sun-400" />
         </div>
       </section>
@@ -41,10 +44,10 @@ export function PublicShell({
           </span>
         </header>
 
-        <section className={clsx("mt-6 w-full min-w-0 max-w-full overflow-hidden rounded-[24px] bg-white p-4 ring-1 ring-slate-200/60 shadow-[0_24px_80px_rgba(10,31,77,0.18)] sm:mt-12 sm:rounded-[30px] sm:p-5", className)}>
+        <section className={clsx("mt-6 w-full min-w-0 max-w-full overflow-hidden rounded-[24px] bg-white p-4 ring-1 ring-slate-200/60 shadow-[0_24px_80px_rgba(10,31,77,0.18)] dark:bg-slate-800 dark:ring-slate-700/60 sm:mt-12 sm:rounded-[30px] sm:p-5", className)}>
           <div className="mb-5">
-            <h1 className="break-words text-2xl font-black leading-tight text-slate-900 sm:text-3xl">{title}</h1>
-            <p className="mt-2 text-sm font-medium leading-6 text-slate-600">{subtitle}</p>
+            <h1 className="break-words text-2xl font-black leading-tight text-slate-900 dark:text-white sm:text-3xl">{title}</h1>
+            <p className="mt-2 text-sm font-medium leading-6 text-slate-600 dark:text-slate-400">{subtitle}</p>
           </div>
           {children}
         </section>
@@ -52,7 +55,7 @@ export function PublicShell({
         <div className="flex justify-center pb-4 md:pb-0">
           <Link
             href="/admin/login"
-            className="group inline-flex max-w-full items-center justify-center gap-2 rounded-full border border-brand-100 bg-white/70 px-3 py-2 text-center text-xs font-bold leading-tight text-brand-900 shadow-[0_10px_30px_rgba(10,31,77,0.08)] transition hover:-translate-y-0.5 hover:border-brand-300 hover:bg-white hover:text-brand-700"
+            className="group inline-flex max-w-full items-center justify-center gap-2 rounded-full border border-brand-100 bg-white/70 px-3 py-2 text-center text-xs font-bold leading-tight text-brand-900 shadow-[0_10px_30px_rgba(10,31,77,0.08)] transition hover:-translate-y-0.5 hover:border-brand-300 hover:bg-white hover:text-brand-700 dark:border-slate-700 dark:bg-slate-800/70 dark:text-brand-200 dark:hover:bg-slate-800 dark:hover:text-brand-100"
             aria-label="Acessar área administrativa"
           >
             <LockKeyhole className="h-3.5 w-3.5 opacity-70 transition group-hover:opacity-100" />

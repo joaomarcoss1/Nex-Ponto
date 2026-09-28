@@ -2,7 +2,6 @@
 
 import { RotateCcw, TimerReset } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle, StatCard } from "@/components/ui/card";
@@ -61,7 +60,7 @@ export function HourBankPage() {
     finally { setSaving(false); }
   }
 
-  return <AdminShell>
+  return <>
     <SectionTitle title="Banco de horas" description="Ledger imutável: créditos e débitos nunca são editados. Correções geram estorno e novo histórico auditável." />
     {error ? <p className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800">{error}</p> : null}
     {message ? <p className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-800">{message}</p> : null}
@@ -79,5 +78,5 @@ export function HourBankPage() {
       <div className="grid content-start gap-3">{movements.map((movement) => <Card key={movement.id} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="truncate font-black text-slate-950">{movement.employees?.full_name || "Funcionário"}</p><p className="text-sm font-semibold text-slate-600">{movement.branches?.name || "Filial"} · {movement.movement_date}</p><p className="mt-1 text-sm text-slate-500">{movement.reason}</p><div className="mt-2 flex flex-wrap gap-2"><Badge tone={Number(movement.minutes) >= 0 ? "green" : "red"}>{minutesToHourText(movement.minutes)}</Badge><Badge tone="neutral">Saldo: {minutesToHourText(Number(movement.balance_after ?? 0))}</Badge>{movement.reversal_of ? <Badge tone="yellow">Estorno</Badge> : null}</div></div>{!movement.reversal_of ? <Button size="sm" variant="ghost" disabled={saving} onClick={() => { setReversalMovement(movement); setReversalReason(""); }}><RotateCcw className="h-4 w-4" />Estornar</Button> : null}</Card>)}{!movements.length ? <Card className="grid min-h-44 place-items-center text-sm font-bold text-slate-500">Nenhum movimento registrado.</Card> : null}</div>
     </div>
     <ResponsiveModal open={Boolean(reversalMovement)} title="Confirmar estorno" onClose={() => !saving && setReversalMovement(null)}><div className="grid gap-4"><p className="text-sm font-medium text-slate-600">O movimento original será preservado e um movimento inverso será criado no ledger.</p><Field label="Motivo obrigatório"><Textarea autoFocus minLength={5} value={reversalReason} onChange={(event) => setReversalReason(event.target.value)} /></Field><div className="grid gap-2 sm:grid-cols-2"><Button variant="ghost" disabled={saving} onClick={() => setReversalMovement(null)}>Cancelar</Button><Button variant="danger" loading={saving} disabled={reversalReason.trim().length < 5} onClick={() => void reverse()}>Registrar estorno</Button></div></div></ResponsiveModal>
-  </AdminShell>;
+  </>;
 }

@@ -12,7 +12,6 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
@@ -163,7 +162,7 @@ export function SettingsPage() {
   );
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle
         title="Personalização e políticas"
         description="Controle a marca white-label, as regras do ponto e os parâmetros operacionais sem alterar o código."
@@ -373,7 +372,7 @@ export function SettingsPage() {
           </p>
         </aside>
       </div>
-    </AdminShell>
+    </>
   );
 }
 

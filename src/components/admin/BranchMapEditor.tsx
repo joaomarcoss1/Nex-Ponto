@@ -56,7 +56,13 @@ export function BranchMapEditor({ value, onChange }: { value: MapValue; onChange
     script.async = true;
     script.defer = true;
     script.onload = () => setMapReady(true);
-    script.onerror = () => setMessage("Não foi possível carregar o Google Maps. Use latitude/longitude manualmente.");
+    script.onerror = () => {
+      // Allow a future mount (e.g. navigating back to this page) to retry
+      // instead of permanently disabling the map for the rest of the session.
+      window.__nexPontoGoogleMapsLoading = false;
+      script.remove();
+      setMessage("Não foi possível carregar o Google Maps. Use latitude/longitude manualmente.");
+    };
     document.head.appendChild(script);
   }, [apiKey]);
 

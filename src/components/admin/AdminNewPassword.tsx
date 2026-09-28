@@ -63,7 +63,14 @@ export function AdminNewPassword() {
       if (updateError) throw updateError;
       window.sessionStorage.removeItem("nexponto_admin_profile");
       window.sessionStorage.removeItem("nexponto_admin_profile_cached_at");
-      router.replace("/admin");
+      // This page only ever holds a client-side Supabase session (it's reached
+      // via a password-recovery link or the forced first-login flow) — the
+      // regular admin session lives in an httpOnly cookie this client never
+      // touches, so there's nothing to exchange here. Drop the local session
+      // and send them through a normal login instead of pretending they're
+      // already authenticated.
+      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+      router.replace("/admin/login");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível atualizar a senha.");
     } finally {
