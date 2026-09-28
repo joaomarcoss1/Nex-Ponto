@@ -3,7 +3,6 @@
 import { AlertTriangle, Building2, CalendarCheck2, Clock3, FileCheck2, TrendingUp, Users, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Button, buttonClassName } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { ToastMessage } from "@/components/ui/feedback";
@@ -87,7 +86,7 @@ export function DashboardPage() {
   }
 
   return (
-    <AdminShell>
+    <>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <SectionTitle title="Dashboard" description="Resumo rápido para o painel abrir sem travamentos. Indicadores pesados são carregados somente quando solicitados." />
         <Button variant="secondary" loading={loadingDetails} onClick={loadDetails}>
@@ -190,6 +189,6 @@ export function DashboardPage() {
           </div>
         </div>
       ) : null}
-    </AdminShell>
+    </>
   );
 }

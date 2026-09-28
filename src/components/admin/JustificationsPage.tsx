@@ -2,7 +2,6 @@
 
 import { Check, ExternalLink, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -61,7 +60,7 @@ export function JustificationsPage() {
   }
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle title="Justificativas" description="Decisão de faltas com anexo seguro e efeito explícito na jornada e na pré-folha." />
       <Card className="mb-4">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -142,6 +141,6 @@ export function JustificationsPage() {
         ))}
         {!items.length ? <Card className="text-center text-slate-500">Nenhuma justificativa encontrada.</Card> : null}
       </div>
-    </AdminShell>
+    </>
   );
 }

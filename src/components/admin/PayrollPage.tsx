@@ -2,7 +2,6 @@
 
 import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Lock, Plus, RefreshCw, ShieldCheck, Unlock, WalletCards } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { BrandMark } from "@/components/BrandMark";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -244,7 +243,7 @@ export function PayrollPage() {
   const criticalCount = closureReview?.checklist?.filter?.((item: any) => item.severity === "critical" && item.count > 0)?.reduce?.((sum: number, item: any) => sum + Number(item.count || 0), 0) || 0;
 
   return (
-    <AdminShell>
+    <>
       <section className="payroll-hero payroll-header-clean mb-5 overflow-hidden rounded-[1.65rem] border border-brand-100 bg-white p-4 shadow-[0_24px_70px_rgba(6,67,32,0.10)] sm:rounded-[2rem] sm:p-6">
         <div className="relative grid gap-5 xl:grid-cols-[1fr_420px] xl:items-center">
           <div className="min-w-0">
@@ -467,6 +466,6 @@ export function PayrollPage() {
           </DesktopTableShell>
         </Card>
       </div>
-    </AdminShell>
+    </>
   );
 }

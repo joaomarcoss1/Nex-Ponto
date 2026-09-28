@@ -2,7 +2,6 @@
 
 import { Clock3, MapPin, Plus, Save, UserRound, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -240,7 +239,7 @@ export function TimeEntriesPage() {
   }
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle
         title="Registros de ponto"
         description="Consulte, ajuste ou adicione marcações com competência, fuso da filial, motivo e auditoria."
@@ -451,6 +450,6 @@ export function TimeEntriesPage() {
       {!loading && !entries.length ? (
         <Card className="mt-3 text-center"><p className="font-bold text-slate-700">Nenhuma marcação encontrada para os filtros informados.</p></Card>
       ) : null}
-    </AdminShell>
+    </>
   );
 }

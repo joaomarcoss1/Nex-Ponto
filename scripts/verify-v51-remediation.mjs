@@ -24,7 +24,7 @@ const requiredFiles = [
   "src/lib/services/professional-payroll-v51.ts",
   "src/app/api/admin/payroll/professional/route.ts",
   "src/components/admin/ProfessionalPayrollPageV51.tsx",
-  "src/app/admin/escalas-profissionais/page.tsx",
+  "src/app/admin/(protected)/escalas-profissionais/page.tsx",
 ];
 const missing = requiredFiles.filter((file) => !fs.existsSync(path.join(root, file)));
 if (missing.length) {

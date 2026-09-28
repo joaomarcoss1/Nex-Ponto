@@ -1,6 +1,5 @@
 "use client";
 
-import { AdminShell } from "@/components/admin/AdminShell";
 import {
   ResourceManager,
   activeBadge,
@@ -81,10 +80,9 @@ const authorizationFields = [
 
 export default function Page() {
   return (
-    <AdminShell>
+    <>
       <div className="grid gap-8">
         <ResourceManager
-          disableShell
           title="Escalas e horários"
           description="Controle individual de dias trabalhados, entrada, saída e almoço."
           endpoint="/api/admin/work-schedules"
@@ -129,7 +127,6 @@ export default function Page() {
           }}
         />
         <ResourceManager
-          disableShell
           title="Feriados, folgas e dias sem expediente"
           description="Dias cadastrados aqui não geram falta indevida na folha."
           endpoint="/api/admin/holidays"
@@ -153,7 +150,6 @@ export default function Page() {
           defaultValues={{ type: "holiday", active: true }}
         />
         <ResourceManager
-          disableShell
           title="Autorização temporária de filial"
           description="Permite que um funcionário bata ponto em outra filial dentro do período configurado."
           endpoint="/api/admin/branch-authorizations"
@@ -181,6 +177,6 @@ export default function Page() {
           defaultValues={{ active: true }}
         />
       </div>
-    </AdminShell>
+    </>
   );
 }

@@ -2,7 +2,6 @@
 
 import { CalendarDays, CheckCircle2, Copy, Save, Send, ShieldAlert, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle, StatCard } from "@/components/ui/card";
@@ -102,7 +101,7 @@ export default function SchedulePlannerPage() {
   const daysOff = Object.values(cells).filter((cell) => cell.is_day_off).length;
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle title="Planejamento semanal de escalas" description="Monte, valide e publique a jornada da equipe em uma grade adaptada para desktop e celular. A escala publicada passa a ser a fonte principal do ponto." />
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <label className="grid gap-1 text-sm font-bold text-slate-700">Filial<select className="min-h-11 rounded-xl border border-slate-200 bg-white px-3" value={branchId} onChange={(event) => setBranchId(event.target.value)}>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
@@ -198,6 +197,6 @@ export default function SchedulePlannerPage() {
         <div className="mt-4 grid gap-2 md:grid-cols-2">{payload.validationIssues.map((item) => <div key={item.id} className={`rounded-2xl border p-3 ${item.severity === "blocking" ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"}`}><div className="flex items-start gap-2"><ShieldAlert className={`mt-0.5 h-4 w-4 shrink-0 ${item.severity === "blocking" ? "text-red-600" : "text-amber-600"}`} /><div><p className="text-sm font-black text-slate-900">{item.message}</p><p className="mt-1 text-xs font-semibold text-slate-500">{item.issue_code}{item.work_date ? ` · ${item.work_date}` : ""}</p></div></div></div>)}</div>
       </Card> : null}
       <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-600"><Badge tone="green"><CheckCircle2 className="mr-1 inline h-3 w-3" />Publicação versionada</Badge><Badge tone="blue">Competência fechada protegida</Badge><Badge tone="yellow">Conflitos bloqueiam publicação</Badge></div>
-    </AdminShell>
+    </>
   );
 }

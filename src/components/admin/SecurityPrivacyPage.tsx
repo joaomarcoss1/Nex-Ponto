@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Laptop2, RefreshCw, Scale, ShieldCheck } from "lucide-react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { SectionTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -89,7 +88,7 @@ export function SecurityPrivacyPage() {
   }
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle
         title="Segurança e privacidade"
         description="Aprovação de dispositivos, rastreabilidade de risco e fila operacional LGPD."
@@ -142,6 +141,6 @@ export function SecurityPrivacyPage() {
         </Card>
       </div>
       <ResponsiveModal open={Boolean(deviceDecision)} title="Confirmar decisão sobre dispositivo" onClose={() => !loading && setDeviceDecision(null)}><div className="grid gap-4"><p className="text-sm font-medium text-slate-600">A alteração será aplicada imediatamente e registrada na auditoria.</p><Field label="Motivo auditável" hint="Informe pelo menos 10 caracteres."><Textarea autoFocus minLength={10} value={decisionReason} onChange={(event) => setDecisionReason(event.target.value)} /></Field><div className="grid gap-2 sm:grid-cols-2"><Button variant="ghost" disabled={loading} onClick={() => setDeviceDecision(null)}>Cancelar</Button><Button variant={deviceDecision?.status === "blocked" ? "danger" : "primary"} loading={loading} disabled={decisionReason.trim().length < 10} onClick={() => void changeDevice()}>Confirmar decisão</Button></div></div></ResponsiveModal>
-    </AdminShell>
+    </>
   );
 }

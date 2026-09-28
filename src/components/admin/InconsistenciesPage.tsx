@@ -2,7 +2,6 @@
 
 import { CheckCircle2, RefreshCw, RotateCcw, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -98,7 +97,7 @@ export function InconsistenciesPage() {
   }
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle title="Revisão de inconsistências" description="Fila operacional para revisar pontos, faltas, horas extras e cadastros incompletos." />
       <Card className="mb-4 animate-fade-in">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -180,6 +179,6 @@ export function InconsistenciesPage() {
           </div>
         </div>
       ) : null}
-    </AdminShell>
+    </>
   );
 }

@@ -2,7 +2,6 @@
 
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/field";
@@ -33,7 +32,7 @@ export function AuditPage() {
   }, []);
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle title="Auditoria" description="Logs de alterações importantes, ajustes manuais, permissões e fechamento da pré-folha." />
       <Card className="mb-4">
         <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
@@ -85,6 +84,6 @@ export function AuditPage() {
           </table>
         </div>
       </Card>
-    </AdminShell>
+    </>
   );
 }

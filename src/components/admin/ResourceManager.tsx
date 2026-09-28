@@ -2,7 +2,6 @@
 
 import { Download, Edit3, FileSpreadsheet, Plus, Power, Save, Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -59,7 +58,6 @@ export function ResourceManager({
   fields,
   columns,
   defaultValues = EMPTY_DEFAULT_VALUES,
-  disableShell = false,
   filters = EMPTY_FILTERS,
   exportEndpoint,
   exportFileBase,
@@ -74,7 +72,6 @@ export function ResourceManager({
   fields: ResourceField[];
   columns: TableColumn[];
   defaultValues?: Record<string, unknown>;
-  disableShell?: boolean;
   filters?: ResourceFilter[];
   exportEndpoint?: string;
   exportFileBase?: string;
@@ -546,7 +543,7 @@ export function ResourceManager({
     </div>
   );
 
-  return disableShell ? content : <AdminShell>{content}</AdminShell>;
+  return content;
 }
 
 export function activeBadge(active: boolean) {

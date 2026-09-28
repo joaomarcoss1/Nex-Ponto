@@ -2,7 +2,6 @@
 
 import { CheckCircle2, Clock3, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -53,7 +52,7 @@ export function HolidayDecisionsPage() {
     finally { setSaving(""); }
   }
 
-  return <AdminShell><div className="grid gap-4">
+  return <><div className="grid gap-4">
     <SectionTitle title="Feriados e funcionamento" description="Defina se cada unidade funcionará. Fechamento é dispensa remunerada e nunca gera desconto automático." />
     {message ? <ToastMessage>{message}</ToastMessage> : null}
     {error ? <ToastMessage type="error">{error}</ToastMessage> : null}
@@ -77,5 +76,5 @@ export function HolidayDecisionsPage() {
         </Card>;
       })}
     </div>
-  </div></AdminShell>;
+  </div></>;
 }

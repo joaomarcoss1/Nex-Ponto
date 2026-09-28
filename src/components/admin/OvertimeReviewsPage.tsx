@@ -2,7 +2,6 @@
 
 import { ChevronLeft, ChevronRight, Check, RefreshCw, Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, SectionTitle } from "@/components/ui/card";
@@ -126,7 +125,7 @@ export function OvertimeReviewsPage() {
   }
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle title="Horas extras" description="Detecte, aprove, rejeite ou ajuste horas extras antes de calcular a pré-folha." />
       <Card className="mb-4">
         <div className="grid gap-3 md:grid-cols-5">
@@ -206,6 +205,6 @@ export function OvertimeReviewsPage() {
           <Button variant="ghost" title="Próxima página" aria-label="Próxima página" disabled={loading || page >= totalPages} onClick={() => load(page + 1)}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </nav>
-    </AdminShell>
+    </>
   );
 }

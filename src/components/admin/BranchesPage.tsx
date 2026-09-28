@@ -2,7 +2,6 @@
 
 import { Building2, Edit3, MapPinned, Plus, QrCode, RefreshCw, Save, ShieldCheck, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { BranchMapEditor } from "@/components/admin/BranchMapEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -184,7 +183,7 @@ export function BranchesPage() {
   }
 
   return (
-    <AdminShell>
+    <>
       <SectionTitle title="Gestão de filiais" description="Configure unidades, horários com vigência, geofence, GPS presencial e QR rotativo para o ponto mobile." />
       {message ? <p className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-800">{message}</p> : null}
       {error ? <p className="mb-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800">{error}</p> : null}
@@ -347,6 +346,6 @@ export function BranchesPage() {
           </div>
         </div>
       ) : null}
-    </AdminShell>
+    </>
   );
 }

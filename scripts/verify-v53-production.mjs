@@ -16,7 +16,7 @@ const requiredFiles = [
   "src/app/api/public/clock/receipt/route.ts",
   "src/app/api/internal/jobs/process/route.ts",
   "src/app/admin/seguranca-mfa/page.tsx",
-  "src/app/admin/seguranca/page.tsx",
+  "src/app/admin/(protected)/seguranca/page.tsx",
   "docs/initial-production-assessment.md",
 ];
 const missing = requiredFiles.filter((file) => !fs.existsSync(path.join(root, file)));
