@@ -1,0 +1,7 @@
+{
+  "name": "catalogo-alyson",
+  "private": true,
+  "type": "module",
+  "description": "Catálogo premium de ebooks, cursos, preparatórios e produtos — Alyson Barbosa",
+  "engines": { "node": ">=20" }
+}
