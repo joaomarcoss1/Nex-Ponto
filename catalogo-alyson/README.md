@@ -1,6 +1,6 @@
-# Catálogo · Alyson Barbosa
+# Veritas Digital · Catálogo
 
-Catálogo premium de ebooks, cursos, preparatórios e produtos, pensado para o link da bio do Instagram (mobile primeiro) e para vender.
+Catálogo premium de ebooks, cursos, preparatórios e produtos de Alyson Barbosa, com a identidade visual Veritas (Azul Tinta, Pergaminho, Ouro e Vinho; Cormorant Garamond + Montserrat, fontes servidas do próprio site), pensado para o link da bio do Instagram (mobile primeiro) e para vender.
 
 - **Sem build.** HTML, CSS e JS puros: carrega rápido até no navegador do Instagram.
 - **Tudo editável em um arquivo:** `config.js` (produtos, preços, links, textos, FAQ, depoimentos).
@@ -27,7 +27,7 @@ Catálogo premium de ebooks, cursos, preparatórios e produtos, pensado para o l
 ## Passo a passo para colocar no ar
 
 ### 1. Editar o conteúdo
-Abra `config.js` e troque:
+Abra `config.js` e troque (capas: `"azul"` linha padrão, `"vinho"` coleção premium, `"pergaminho"`):
 - `marca`: Instagram, WhatsApp (só dígitos, com 55), e-mail, foto (`assets/foto.jpg`).
 - `produtos`: título, descrição, preço, **link de checkout** (Hotmart, Kiwify, Eduzz…). Sem link, o botão abre o WhatsApp com a mensagem pronta.
 - Capas: use `imagem: "/assets/capa.jpg"` (3:4) para a capa real do ebook, ou deixe a capa gerada pelas cores.

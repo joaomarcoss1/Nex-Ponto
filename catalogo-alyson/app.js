@@ -7,6 +7,14 @@
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // Símbolo Veritas (vetor oficial do pacote de identidade).
+  function sym(cor, estrela) {
+    cor = cor || "currentColor";
+    return '<svg class="sym" viewBox="10 30 200 165" aria-hidden="true"><g transform="translate(10,12)">' +
+      '<polygon fill="' + (estrela || "#B8935A") + '" points="100,23 102,29.86 108.6,27.14 104.48,32.98 110.72,36.45 103.6,36.87 104.77,43.91 100,38.6 95.23,43.91 96.4,36.87 89.28,36.45 95.52,32.98 91.4,27.14 98,29.86"/>' +
+      '<path fill="' + cor + '" d="M26 64 Q60 46 94 70 L100 172 Z"/><path fill="' + cor + '" d="M174 64 Q140 46 106 70 L100 172 Z"/></g></svg>';
+  }
+
   var CAT_NOME = { ebook: "Ebook", curso: "Curso", preparatorio: "Preparatório", produto: "Produto" };
 
   function esc(s) {
@@ -86,16 +94,15 @@
 
   /* ---------------- Capas 3D ---------------- */
   function book(p, extra) {
-    var c = p.capa || {};
-    var style = "--c1:" + (c.de || "#1d1a16") + ";--c2:" + (c.para || "#3a2f1f") + ";--ac:" + (c.acento || "#d4b06a");
+    var estilo = typeof p.capa === "string" ? p.capa : "azul"; // azul | vinho | pergaminho
+    var premium = estilo === "vinho";
     var front = p.imagem
       ? '<img src="' + esc(p.imagem) + '" alt="" loading="lazy" />'
-      : '<span class="book__ornament"></span>' +
-        '<div><div class="book__kicker">' + esc(CAT_NOME[p.categoria] || "") + '</div></div>' +
-        '<div><h3 class="book__title">' + esc(p.titulo) + '</h3><div class="book__rule"></div><div class="book__sub">' + esc(p.subtitulo || "") + '</div></div>' +
-        '<div class="book__author">' + esc(M.nome) + '</div>';
+      : '<div>' + (premium ? '<div class="book__kicker">Coleção premium</div>' : sym("var(--ac)", "var(--ac)")) + '</div>' +
+        '<div>' + (premium ? sym("var(--ac)", "var(--ac)") : "") + '<h3 class="book__title">' + esc(p.titulo) + '</h3><div class="book__rule"></div><div class="book__sub">' + esc(p.subtitulo || "") + '</div></div>' +
+        '<div class="book__author">' + esc(M.autor) + '<small>' + esc(M.nome) + '</small></div>';
     return (
-      '<div class="book ' + (c.tema === "claro" ? "book--claro " : "") + (extra || "") + '" style="' + style + '" aria-hidden="true">' +
+      '<div class="book book--' + esc(estilo) + " " + (extra || "") + '" aria-hidden="true">' +
       '<div class="book__inner"><div class="book__back"></div><div class="book__pages"></div><div class="book__front">' + front + "</div></div>" +
       '<div class="book__shadow"></div></div>'
     );
@@ -117,12 +124,13 @@
 
   /* ---------------- Marca / hero ---------------- */
   document.documentElement.classList.remove("no-js");
-  $("#brandName").textContent = M.nome;
+  $$("[data-sym]").forEach(function (el) {
+    el.outerHTML = el.dataset.sym === "ouro" ? sym("#B8935A") : el.closest(".avatar") ? sym("#B8935A", "#D4B27A") : sym("#0E1B2E");
+  });
   $("#footNome").textContent = M.nome;
-  ["#brandMark", "#footMark"].forEach(function (s) { $(s).textContent = M.monograma; });
+  $("#footSlogan").textContent = M.slogan;
   var avatar = $("#avatar");
-  if (M.foto) avatar.innerHTML = '<img src="' + esc(M.foto) + '" alt="' + esc(M.nome) + '" />';
-  else avatar.firstElementChild.textContent = M.monograma;
+  if (M.foto) avatar.innerHTML = '<img src="' + esc(M.foto) + '" alt="' + esc(M.autor) + '" />';
   ["#topInsta", "#footInsta"].forEach(function (s) { $(s).href = M.instagram; });
   $("#footMail").href = "mailto:" + M.email;
   $("#wa").href = waUrl(M.mensagemWhatsapp + " os materiais.");
@@ -130,6 +138,7 @@
   $("#heroSelo").textContent = C.hero.selo;
   $("#heroTitulo").innerHTML = C.hero.titulo; // aceita <em> intencionalmente
   $("#heroSub").textContent = C.hero.subtitulo;
+  $("#heroBy").textContent = C.hero.assinatura || "";
 
   var tk = C.faixaTopo.map(function (t) { return "<span>" + esc(t) + "</span>"; }).join("");
   $("#ticker").innerHTML = tk + tk + tk + tk;
@@ -155,7 +164,7 @@
     '<ul class="featured__list">' + (destaque.beneficios || []).map(function (b) { return "<li>" + esc(b) + "</li>"; }).join("") + "</ul>" +
     (mostrarTimer ? '<div class="countdown"><span>A oferta termina em</span><div class="countdown__boxes" id="timer"></div></div>' : "") +
     '<div class="featured__buy">' + priceHtml(destaque) +
-    '<button class="btn btn--gold" data-buy="' + esc(destaque.id) + '">Quero o meu agora</button></div>' +
+    '<button class="btn btn--gold" data-buy="' + esc(destaque.id) + '">Quero o meu agora <span class="btn__arrow" aria-hidden="true">→</span></button></div>' +
     '<div class="trust"><span>Acesso imediato</span><span>Garantia de 7 dias</span><span>Compra segura</span></div>' +
     '<button class="btn btn--ghost btn--sm" style="margin-top:18px" data-open="' + esc(destaque.id) + '">Ver detalhes</button>' +
     "</div></div>";

@@ -3,22 +3,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Alyson Barbosa · Catálogo</title>
-  <meta name="description" content="Ebooks, cursos, preparatórios e produtos de Alyson Barbosa. Acesso imediato e garantia de 7 dias." />
-  <meta name="theme-color" content="#0b0a09" />
-  <meta property="og:title" content="Alyson Barbosa · Catálogo oficial" />
-  <meta property="og:description" content="Ebooks, cursos, preparatórios e produtos. Acesso imediato e garantia de 7 dias." />
+  <title>Veritas Digital · Catálogo</title>
+  <meta name="description" content="Veritas Digital — ebooks, cursos, preparatórios e produtos de Alyson Barbosa. Conteúdo de valor. Conhecimento de verdade." />
+  <meta name="theme-color" content="#0E1B2E" />
+  <meta property="og:title" content="Veritas Digital · Catálogo oficial" />
+  <meta property="og:description" content="Conteúdo de valor. Conhecimento de verdade. Ebooks, cursos e preparatórios com acesso imediato." />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="/assets/og.png" />
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="alternate icon" href="/assets/favicon.ico" />
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+  <link rel="preload" href="/assets/fonts/cormorant-garamond-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/assets/fonts/montserrat-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div class="grain" aria-hidden="true"></div>
-
   <!-- Faixa de benefícios -->
   <div class="ticker" aria-label="Benefícios">
     <div class="ticker__track" id="ticker"></div>
@@ -26,8 +25,8 @@
 
   <header class="top">
     <a class="brand" href="#inicio" aria-label="Início">
-      <span class="brand__mark" id="brandMark">AB</span>
-      <span class="brand__name" id="brandName">Alyson Barbosa</span>
+      <span class="sym" data-sym></span>
+      <span class="brand__word"><span class="brand__name" id="brandName">VERITAS</span><span class="brand__tag" id="brandTag">DIGITAL</span></span>
     </a>
     <nav class="top__nav">
       <a href="#catalogo">Catálogo</a>
@@ -42,12 +41,12 @@
     <section class="hero">
       <div class="hero__glow" aria-hidden="true"></div>
       <div class="hero__inner">
-        <div class="avatar reveal" id="avatar"><span>AB</span></div>
+        <div class="avatar reveal" id="avatar"><span class="sym" data-sym></span></div>
         <p class="eyebrow reveal" id="heroSelo">Catálogo oficial</p>
         <h1 class="hero__title reveal" id="heroTitulo"></h1>
-        <p class="hero__sub reveal" id="heroSub"></p>
+        <p class="hero__sub reveal"><span id="heroSub"></span><span class="hero__by" id="heroBy"></span></p>
         <div class="hero__ctas reveal">
-          <a class="btn btn--gold" href="#catalogo">Ver catálogo <span aria-hidden="true">→</span></a>
+          <a class="btn btn--gold" href="#catalogo">Ver catálogo <span class="btn__arrow" aria-hidden="true">→</span></a>
           <a class="btn btn--ghost" href="#gratis">Quero um material grátis</a>
         </div>
         <ul class="proofs reveal" id="provas"></ul>
@@ -99,7 +98,7 @@
     <section class="lead" id="gratis">
       <div class="lead__card reveal">
         <div class="lead__copy">
-          <p class="eyebrow">Presente</p>
+          <p class="eyebrow">Presente Veritas</p>
           <h2 id="iscaTitulo"></h2>
           <p id="iscaSub"></p>
           <ul class="lead__ticks">
@@ -140,7 +139,7 @@
     <!-- GARANTIA -->
     <section class="guarantee reveal">
       <div class="seal" aria-hidden="true">
-        <svg viewBox="0 0 120 120"><defs><path id="c" d="M60,60 m-46,0 a46,46 0 1,1 92,0 a46,46 0 1,1 -92,0"/></defs><text><textPath href="#c">GARANTIA INCONDICIONAL · RISCO ZERO · </textPath></text></svg>
+        <svg viewBox="0 0 120 120"><defs><path id="c" d="M60,60 m-46,0 a46,46 0 1,1 92,0 a46,46 0 1,1 -92,0"/></defs><text><textPath href="#c">GARANTIA VERITAS · RISCO ZERO · </textPath></text></svg>
         <strong>7<small>dias</small></strong>
       </div>
       <div>
@@ -161,13 +160,14 @@
     <!-- CTA FINAL -->
     <section class="final reveal">
       <h2>Seu próximo nível começa com <em>uma decisão</em>.</h2>
-      <a class="btn btn--gold" href="#catalogo">Escolher meu material</a>
+      <a class="btn btn--gold" href="#catalogo">Escolher meu material <span class="btn__arrow" aria-hidden="true">→</span></a>
     </section>
   </main>
 
   <footer class="foot">
-    <span class="brand__mark brand__mark--sm" id="footMark">AB</span>
-    <p>© <span id="ano"></span> <span id="footNome">Alyson Barbosa</span>. Todos os direitos reservados.</p>
+    <span class="brand"><span class="sym" data-sym="ouro"></span><span class="brand__word"><span class="brand__name">VERITAS</span><span class="brand__tag">DIGITAL</span></span></span>
+    <p class="foot__slogan" id="footSlogan"></p>
+    <p>© <span id="ano"></span> <span id="footNome">Veritas Digital</span>. Todos os direitos reservados.</p>
     <p class="foot__links"><a id="footInsta" href="#" target="_blank" rel="noopener">Instagram</a> · <a id="footMail" href="#">E-mail</a></p>
   </footer>
 

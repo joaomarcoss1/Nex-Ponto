@@ -12,14 +12,15 @@
 
 window.CATALOGO = {
   marca: {
-    nome: "Alyson Barbosa",
-    monograma: "AB",
-    // Foto de perfil (quadrada, mín. 600x600). Coloque em /assets e troque aqui.
-    // Deixe "" para usar o monograma dourado.
+    nome: "Veritas Digital",
+    autor: "Alyson Barbosa",
+    slogan: "Conteúdo de valor. Conhecimento de verdade.",
+    // Foto do Alyson (quadrada, mín. 600x600). Coloque em /assets e troque aqui.
+    // Deixe "" para usar o símbolo Veritas.
     foto: "",
     instagram: "https://instagram.com/", // ← @ do Alyson
     whatsapp: "5500000000000", // ← DDI + DDD + número, só dígitos
-    mensagemWhatsapp: "Olá, Alyson! Vim pelo catálogo e quero saber mais sobre",
+    mensagemWhatsapp: "Olá! Vim pelo catálogo Veritas Digital e quero saber mais sobre",
     email: "contato@exemplo.com",
     // Meta Pixel (opcional) — cole só o ID numérico para rastrear
     // ViewContent / InitiateCheckout / Lead nos anúncios.
@@ -28,9 +29,10 @@ window.CATALOGO = {
 
   hero: {
     selo: "Catálogo oficial",
-    titulo: "Conhecimento que vira <em>resultado</em>.",
+    titulo: "Conhecimento de <em>verdade</em>.",
     subtitulo:
       "Ebooks, cursos e preparatórios criados para você sair do lugar com método, clareza e acompanhamento. Acesso imediato após a compra.",
+    assinatura: "por Alyson Barbosa",
     // ⚠️ EXEMPLO — coloque os números reais (ou remova itens).
     provas: [
       { valor: 2400, prefixo: "+", sufixo: "", rotulo: "alunos atendidos" },
@@ -66,7 +68,7 @@ window.CATALOGO = {
      - parcelas: em quantas vezes mostrar (ex.: 12)
      - checkout: link da Hotmart / Kiwify / Eduzz / Stripe / Mercado Pago
        (deixe "" para o botão abrir o WhatsApp)
-     - capa: cores do livro 3D gerado automaticamente
+     - capa: "azul" (linha padrão) | "vinho" (coleção premium) | "pergaminho"
        OU imagem: "/assets/minha-capa.jpg" (proporção 3:4)
      - selo: "Mais vendido", "Novo", "Lançamento"... (opcional)
      - emBreve: true → vira lista de espera (captura lead)
@@ -94,7 +96,7 @@ window.CATALOGO = {
       precoDe: 97,
       parcelas: 12,
       checkout: "",
-      capa: { de: "#1d1a16", para: "#3a2f1f", acento: "#d4b06a", tema: "escuro" }
+      capa: "azul"
     },
     {
       id: "guia-produtividade",
@@ -116,7 +118,7 @@ window.CATALOGO = {
       precoDe: 67,
       parcelas: 12,
       checkout: "",
-      capa: { de: "#0f2a2a", para: "#1f4d49", acento: "#e8d3a2", tema: "escuro" }
+      capa: "azul"
     },
     {
       id: "mentalidade",
@@ -133,7 +135,7 @@ window.CATALOGO = {
       precoDe: 49,
       parcelas: 6,
       checkout: "",
-      capa: { de: "#2a1414", para: "#5a2323", acento: "#f1dca7", tema: "escuro" }
+      capa: "pergaminho"
     },
     {
       id: "curso-completo",
@@ -156,7 +158,7 @@ window.CATALOGO = {
       precoDe: 597,
       parcelas: 12,
       checkout: "",
-      capa: { de: "#14161f", para: "#2b3150", acento: "#d4b06a", tema: "escuro" }
+      capa: "vinho"
     },
     {
       id: "preparatorio-intensivo",
@@ -179,7 +181,7 @@ window.CATALOGO = {
       precoDe: 397,
       parcelas: 12,
       checkout: "",
-      capa: { de: "#1b1f14", para: "#3b4a25", acento: "#f1dca7", tema: "escuro" }
+      capa: "azul"
     },
     {
       id: "preparatorio-proximo",
@@ -197,7 +199,7 @@ window.CATALOGO = {
       preco: 0,
       parcelas: 0,
       checkout: "",
-      capa: { de: "#101010", para: "#2a2a2a", acento: "#d4b06a", tema: "escuro" }
+      capa: "vinho"
     },
     {
       id: "planner-fisico",
@@ -214,7 +216,7 @@ window.CATALOGO = {
       precoDe: 119,
       parcelas: 6,
       checkout: "",
-      capa: { de: "#e9e2d4", para: "#cbbd9f", acento: "#1d1a16", tema: "claro" }
+      capa: "pergaminho"
     }
   ],
 
